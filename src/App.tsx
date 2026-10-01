@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PlusTelegramSimulator from './components/PlusTelegramSimulator';
 import SettingsTab from './components/SettingsTab';
+import HeroSmsTab from './components/HeroSmsTab';
 import { 
   Bot, 
   Server, 
@@ -89,7 +90,7 @@ interface RechargeCard {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<
-    'simulator' | 'texts-cms' | 'payments' | 'servers' | 'prices' | 'cards' | 'channels' | 'bot-code' | 'dashboard'
+    'simulator' | 'herosms' | 'texts-cms' | 'payments' | 'servers' | 'prices' | 'cards' | 'channels' | 'bot-code' | 'dashboard'
   >('simulator');
 
   // Servers State
@@ -479,14 +480,29 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Live HeroSMS Account Widget */}
+            <div 
+              onClick={() => setActiveTab('herosms')}
+              className="hidden md:flex items-center gap-2.5 bg-slate-900/80 hover:bg-slate-900 border border-emerald-500/30 rounded-2xl px-3.5 py-2 text-xs cursor-pointer transition-all hover:border-emerald-500/60 shadow"
+              title="سيرفر وموقع HeroSMS الرسمي - اضغط لفتح لوحة التحكم"
+            >
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
+                HS
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-mono">HeroSMS (#1513844)</span>
+                <span className="font-black text-emerald-400 text-xs font-mono">340.50 ₽</span>
+              </div>
+            </div>
+
             {/* Live Mustafa 5SIM Account Widget */}
             <div className="hidden lg:flex items-center gap-3 bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-2 text-xs">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">
                 5S
               </div>
               <div className="text-right">
                 <span className="text-[10px] text-slate-400 block font-mono">حساب مصطفى (#4437001)</span>
-                <span className="font-black text-emerald-400 text-sm font-mono">$3.49 USD</span>
+                <span className="font-black text-blue-400 text-sm font-mono">$3.49 USD</span>
               </div>
             </div>
 
@@ -512,6 +528,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex gap-2 py-2.5">
           {[
             { id: 'simulator', label: '📱 محاكي واجهات البوت (1:1 Telegram)', icon: Smartphone },
+            { id: 'herosms', label: '⚡ ربط سيرفر HeroSMS (OpenAPI & Webhook)', icon: Zap, badge: '1513844' },
             { id: 'texts-cms', label: '✍️ محرر النصوص والكتابات (CMS Studio)', icon: Edit3 },
             { id: 'payments', label: '💳 حسابات وطرق الإيداع والبنوك', icon: CreditCard, badge: payments.length },
             { id: 'servers', label: '🌐 سيرفرات ومواقع التوريد API', icon: Server, badge: servers.length },
@@ -559,6 +576,11 @@ export default function App() {
               onOpenServers={() => setActiveTab('servers')}
             />
           </div>
+        )}
+
+        {/* TAB: HEROSMS OPENAPI & WEBHOOK INTEGRATION */}
+        {activeTab === 'herosms' && (
+          <HeroSmsTab showToast={showToast} />
         )}
 
         {/* TAB 2: TEXTS & CMS STUDIO */}

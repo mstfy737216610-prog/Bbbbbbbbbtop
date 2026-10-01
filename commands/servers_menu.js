@@ -16,12 +16,15 @@ var text = "🌐 *إدارة السيرفرات ومواقع التوريد ال
   "3️⃣ تعديل نسبة الربح المضافة لكل موقع.\n" +
   "4️⃣ فحص الرصيد الحقيقي المتبقي في حسابك بكل موقع.\n\n" +
   "المواقع المتصلة حالياً:\n" +
+  "• سيرفر مصطفى 5SIM (#4437001): `ONLINE`\n" +
+  "• سيرفر HeroSMS (#1513844): `ONLINE`\n" +
   "• سيرفر موقع محمد: `ONLINE` (مفعل)\n" +
-  "• 5sim.biz: `ONLINE` (مفعل)\n" +
-  "• sms-man.ru: `ONLINE` (مفعل)\n" +
-  "• vak-sms.com: `ONLINE` (مفعل)";
+  "• sms-man.ru: `ONLINE` (مفعل)";
 
 var keyboard = [
+  [
+    { text: "🦸‍♂️ إعدادات سيرفر HeroSMS (#1513844)", callback_data: "hero_sms" }
+  ],
   [
     { text: "➕ إضافة موقع جديد بالرابط و API", callback_data: "add_custom_site" }
   ],

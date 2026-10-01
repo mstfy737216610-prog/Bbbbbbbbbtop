@@ -12,6 +12,37 @@
     "email": "mstfy737216610@gmail.com",
     "userId": 4437001,
     "rating": 96,
-    "notes": "المزود الرئيسي المعتمد باسم مصطفى - توكن JWT صالح لمدة سنة"
+    "notes": "المزود الأساسي الأول باسم مصطفى - توكن JWT صالح لمدة سنة"
+  },
+  {
+    "id": "hero-sms",
+    "name": "سيرفر HeroSMS المعتمد (#1513844)",
+    "url": "https://hero-sms.com/stubs/handler_api.php",
+    "apiKey": "HEROSMS_USER_KEY_1513844",
+    "apiType": "stubs",
+    "profitMargin": 2.0,
+    "currency": "₽",
+    "isActive": true,
+    "liveBalance": 240.50,
+    "email": "mstfyahmed737@gmail.com",
+    "userId": 1513844,
+    "rating": 100,
+    "webhookIps": [
+      "84.32.223.53",
+      "185.138.88.87"
+    ],
+    "notes": "الموقع الثاني المعتمد لمصطفى (حساب #1513844 متوافق مع SMS-Activate و OpenAPI 3.2.0)"
+  },
+  {
+    "id": "srv-activate",
+    "name": "سيرفر SMS-Activate السريع",
+    "url": "https://api.sms-activate.org/stubs/handler_api.php",
+    "apiKey": "ACTIVATE_GLOBAL_KEY",
+    "apiType": "stubs",
+    "profitMargin": 1.5,
+    "currency": "₽",
+    "isActive": true,
+    "liveBalance": 580.0,
+    "notes": "سيرفر احتياطي سريع للأرقام الخليجية والعربية"
   }
 ]
