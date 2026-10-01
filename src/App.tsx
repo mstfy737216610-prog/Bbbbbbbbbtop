@@ -138,27 +138,39 @@ export default function App() {
   const [adjustAmount, setAdjustAmount] = useState('25');
   const [balanceNote, setBalanceNote] = useState('');
 
-  // Dynamic Country Prices State
-  const [customPrices, setCustomPrices] = useState<Record<string, Record<string, { name: string; priceRub: number; costUsd: number }>>>({
+  // Dynamic Country Prices State & Linked Servers
+  interface CountryPriceItem {
+    name: string;
+    priceRub: number;
+    costUsd: number;
+    serverId?: string;
+    serverName?: string;
+  }
+
+  const [customPrices, setCustomPrices] = useState<Record<string, Record<string, CountryPriceItem>>>({
     whatsapp: {
-      colombia: { name: 'كولومبيا 🇨🇴 (الأرخص)', priceRub: 15.0, costUsd: 0.15 },
-      albania: { name: 'ألبانيا 🇦🇱 (ممتاز)', priceRub: 15.0, costUsd: 0.24 },
-      angola: { name: 'أنغولا 🇦🇴', priceRub: 18.0, costUsd: 0.32 },
-      egypt: { name: 'مصر 🇪🇬', priceRub: 20.0, costUsd: 0.20 },
-      argentina: { name: 'الأرجنتين 🇦🇷', priceRub: 16.0, costUsd: 0.25 },
-      ukraine: { name: 'أوكرانيا 🇺🇦', priceRub: 16.0, costUsd: 0.25 },
-      indonesia: { name: 'إندونيسيا 🇮🇩', priceRub: 10.0, costUsd: 0.12 },
-      russia: { name: 'روسيا 🇷🇺', priceRub: 45.0, costUsd: 0.60 }
+      yemen: { name: 'اليمن 🇾🇪', priceRub: 25.0, costUsd: 0.30, serverId: 'hero-sms', serverName: 'HeroSMS' },
+      saudi: { name: 'السعودية 🇸🇦', priceRub: 30.0, costUsd: 0.40, serverId: 'hero-sms', serverName: 'HeroSMS' },
+      colombia: { name: 'كولومبيا 🇨🇴 (الأرخص)', priceRub: 10.0, costUsd: 0.15, serverId: 'srv-1', serverName: '5SIM.NET' },
+      albania: { name: 'ألبانيا 🇦🇱 (ممتاز)', priceRub: 15.0, costUsd: 0.24, serverId: 'hero-sms', serverName: 'HeroSMS' },
+      angola: { name: 'أنغولا 🇦🇴', priceRub: 18.0, costUsd: 0.32, serverId: 'srv-1', serverName: '5SIM.NET' },
+      egypt: { name: 'مصر 🇪🇬 (3M رقم)', priceRub: 15.0, costUsd: 0.20, serverId: 'hero-sms', serverName: 'HeroSMS' },
+      argentina: { name: 'الأرجنتين 🇦🇷', priceRub: 16.0, costUsd: 0.25, serverId: 'srv-1', serverName: '5SIM.NET' },
+      ukraine: { name: 'أوكرانيا 🇺🇦', priceRub: 16.0, costUsd: 0.25, serverId: 'hero-sms', serverName: 'HeroSMS' },
+      indonesia: { name: 'إندونيسيا 🇮🇩', priceRub: 10.0, costUsd: 0.12, serverId: 'srv-1', serverName: '5SIM.NET' },
+      russia: { name: 'روسيا 🇷🇺', priceRub: 20.0, costUsd: 0.25, serverId: 'hero-sms', serverName: 'HeroSMS' }
     },
     telegram: {
-      colombia: { name: 'كولومبيا 🇨🇴 ($0.10)', priceRub: 10.0, costUsd: 0.10 },
-      egypt: { name: 'مصر 🇪🇬 (3M رقم)', priceRub: 15.0, costUsd: 0.20 },
-      angola: { name: 'أنغولا 🇦🇴', priceRub: 12.0, costUsd: 0.22 },
-      albania: { name: 'ألبانيا 🇦🇱', priceRub: 18.0, costUsd: 0.30 },
-      argentina: { name: 'الأرجنتين 🇦🇷', priceRub: 22.0, costUsd: 0.50 },
-      russia: { name: 'روسيا 🇷🇺', priceRub: 15.0, costUsd: 0.25 },
-      ukraine: { name: 'أوكرانيا 🇺🇦', priceRub: 16.0, costUsd: 0.25 },
-      indonesia: { name: 'إندونيسيا 🇮🇩', priceRub: 12.0, costUsd: 0.15 }
+      colombia: { name: 'كولومبيا 🇨🇴 ($0.10)', priceRub: 10.0, costUsd: 0.10, serverId: 'srv-1', serverName: '5SIM.NET' },
+      egypt: { name: 'مصر 🇪🇬 (3M رقم)', priceRub: 15.0, costUsd: 0.20, serverId: 'hero-sms', serverName: 'HeroSMS' },
+      yemen: { name: 'اليمن 🇾🇪', priceRub: 25.0, costUsd: 0.30, serverId: 'hero-sms', serverName: 'HeroSMS' },
+      saudi: { name: 'السعودية 🇸🇦', priceRub: 28.0, costUsd: 0.35, serverId: 'hero-sms', serverName: 'HeroSMS' },
+      angola: { name: 'أنغولا 🇦🇴', priceRub: 12.0, costUsd: 0.22, serverId: 'srv-1', serverName: '5SIM.NET' },
+      albania: { name: 'ألبانيا 🇦🇱', priceRub: 18.0, costUsd: 0.30, serverId: 'hero-sms', serverName: 'HeroSMS' },
+      argentina: { name: 'الأرجنتين 🇦🇷', priceRub: 22.0, costUsd: 0.50, serverId: 'srv-1', serverName: '5SIM.NET' },
+      russia: { name: 'روسيا 🇷🇺', priceRub: 15.0, costUsd: 0.25, serverId: 'hero-sms', serverName: 'HeroSMS' },
+      ukraine: { name: 'أوكرانيا 🇺🇦', priceRub: 16.0, costUsd: 0.25, serverId: 'hero-sms', serverName: 'HeroSMS' },
+      indonesia: { name: 'إندونيسيا 🇮🇩', priceRub: 12.0, costUsd: 0.15, serverId: 'srv-1', serverName: '5SIM.NET' }
     }
   });
 
@@ -166,7 +178,8 @@ export default function App() {
     service: 'whatsapp',
     countryCode: '',
     countryName: '',
-    priceRub: '15'
+    priceRub: '15',
+    serverId: 'hero-sms'
   });
 
   // Notification Toast
@@ -175,6 +188,121 @@ export default function App() {
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  // Adjust Country Price by Delta
+  const handleAdjustCountryPrice = async (service: string, country: string, delta: number) => {
+    const current = customPrices[service]?.[country];
+    if (!current) return;
+    const newPrice = Math.max(1, +(current.priceRub + delta).toFixed(1));
+    try {
+      const res = await fetch('/api/store/custom-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service,
+          country,
+          priceRub: newPrice,
+          name: current.name,
+          serverId: current.serverId,
+          serverName: current.serverName
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.customPrices) {
+        setCustomPrices(data.customPrices);
+        showToast(`✅ تم تعديل سعر ${current.name} إلى ${newPrice} ₽ فورياً`);
+      }
+    } catch (e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
+  // Change Linked Server for a Country
+  const handleChangeCountryServer = async (service: string, country: string, serverId: string) => {
+    const current = customPrices[service]?.[country];
+    if (!current) return;
+    const srv = servers.find(s => s.id === serverId);
+    const serverName = serverId === 'hero-sms' ? 'HeroSMS' : (serverId === 'srv-1' ? '5SIM.NET' : (srv?.name || serverId));
+    try {
+      const res = await fetch('/api/store/custom-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service,
+          country,
+          priceRub: current.priceRub,
+          name: current.name,
+          serverId,
+          serverName
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.customPrices) {
+        setCustomPrices(data.customPrices);
+        showToast(`🔗 تم ربط ${current.name} بسيرفر ${serverName} بنجاح!`);
+      }
+    } catch (e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
+  // Delete Country
+  const handleDeleteCountry = async (service: string, country: string) => {
+    if (!confirm(`هل أنت متأكد من حذف هذه الدولة (${country}) من قائمة البوت؟`)) return;
+    try {
+      const res = await fetch(`/api/store/custom-prices/${service}/${country}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success && data.customPrices) {
+        setCustomPrices(data.customPrices);
+        showToast(`🗑 تم حذف الدولة بنجاح`);
+      }
+    } catch (e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
+  // Bulk Link All Countries to a Provider
+  const handleBulkLinkServer = async (serverId: string, serverName: string) => {
+    try {
+      const res = await fetch('/api/store/custom-prices/bulk-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serverId, serverName })
+      });
+      const data = await res.json();
+      if (data.success && data.customPrices) {
+        setCustomPrices(data.customPrices);
+        showToast(`👑 تم ربط كافة الدول بسيرفر ${serverName} بنجاح!`);
+      }
+    } catch (e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
+  // Quick Add Preset Country
+  const handleQuickAddCountry = async (country: { code: string; name: string; price: number }, service: string = 'whatsapp') => {
+    try {
+      const res = await fetch('/api/store/custom-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service,
+          country: country.code,
+          priceRub: country.price,
+          name: country.name,
+          serverId: 'hero-sms',
+          serverName: 'HeroSMS'
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.customPrices) {
+        setCustomPrices(data.customPrices);
+        showToast(`🎉 تم إضافة ${country.name} وربطها بسيرفر HeroSMS فورياً!`);
+      }
+    } catch (e: any) {
+      showToast(e.message, 'error');
+    }
   };
 
   // Fetch initial data from server
@@ -217,6 +345,9 @@ export default function App() {
       showToast('يرجى إدخال كود الدولة والسعر', 'error');
       return;
     }
+    const srv = servers.find(s => s.id === priceForm.serverId);
+    const serverName = priceForm.serverId === 'hero-sms' ? 'HeroSMS' : (priceForm.serverId === 'srv-1' ? '5SIM.NET' : (srv?.name || priceForm.serverId));
+
     try {
       const res = await fetch('/api/store/custom-prices', {
         method: 'POST',
@@ -225,14 +356,16 @@ export default function App() {
           service: priceForm.service, 
           country: priceForm.countryCode.toLowerCase().trim(), 
           priceRub: parseFloat(priceForm.priceRub) || 15,
-          name: priceForm.countryName || priceForm.countryCode.toUpperCase()
+          name: priceForm.countryName || priceForm.countryCode.toUpperCase(),
+          serverId: priceForm.serverId,
+          serverName
         })
       });
       const data = await res.json();
       if (data.success && data.customPrices) {
         setCustomPrices(data.customPrices);
-        setPriceForm({ service: 'whatsapp', countryCode: '', countryName: '', priceRub: '15' });
-        showToast('✅ تم إضافة وتحديث سعر الدولة في القائمة فورياً!', 'success');
+        setPriceForm({ service: 'whatsapp', countryCode: '', countryName: '', priceRub: '15', serverId: 'hero-sms' });
+        showToast('✅ تم إضافة وتحديث دولة وسعرها وربطها بالسيرفر فورياً!', 'success');
       }
     } catch (e: any) {
       showToast(`خطأ في حفظ السعر: ${e.message}`, 'error');
@@ -998,22 +1131,81 @@ export default function App() {
         {/* TAB 5: PRICES & COUNTRIES CATALOG */}
         {activeTab === 'prices' && (
           <div className="space-y-8 animate-in fade-in duration-300">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-black text-white">إدارة وتعديل أسعار الدول والسيرفرات بالروبل</h2>
-                <p className="text-xs text-slate-400">
-                  تحديد أسعار الأرقام لكل دولة وتطبيق (واتساب، تيليجرام، تيك توك، جوجل، إنستقرام، وغيرها).
+                <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                  <span>إدارة وتخصيص الدول والأسعار وربط المواقع بالسيرفرات</span>
+                  <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-bold">
+                    مزامنة فورية مع البوت ⚡
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  تحديد سعر كل دولة بالروبل وربطها مباشرة بالموقع المزود (HeroSMS #1513844 أو 5SIM.NET أو أي سيرفر). أي تعديل هنا ينعكس في البوت فورياً والعكس صحيح!
                 </p>
+              </div>
+
+              {/* Bulk Actions */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => handleBulkLinkServer('hero-sms', 'HeroSMS')}
+                  className="px-4 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-2xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shadow"
+                >
+                  <span>👑</span>
+                  ربط كافة الدول بـ HeroSMS (#1513844)
+                </button>
+                <button
+                  onClick={() => handleBulkLinkServer('srv-1', '5SIM.NET')}
+                  className="px-4 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-2xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shadow"
+                >
+                  <span>💎</span>
+                  ربط كافة الدول بـ 5SIM.NET (مصطفى)
+                </button>
               </div>
             </div>
 
-            {/* Quick Add / Edit Price Form */}
+            {/* Quick Add Presets (Arab & Popular Countries) */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-slate-300 flex items-center gap-2">
+                  <Sparkles size={16} className="text-amber-400" />
+                  إضافة دولة شائعة وربطها بسيرفر HeroSMS بضغطة زر واحدة:
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">سعر مسبق الإعداد</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { code: 'yemen', name: 'اليمن 🇾🇪', price: 25 },
+                  { code: 'saudi', name: 'السعودية 🇸🇦', price: 30 },
+                  { code: 'egypt', name: 'مصر 🇪🇬', price: 15 },
+                  { code: 'iraq', name: 'العراق 🇮🇶', price: 20 },
+                  { code: 'jordan', name: 'الأردن 🇯🇴', price: 22 },
+                  { code: 'uae', name: 'الإمارات 🇦🇪', price: 28 },
+                  { code: 'kuwait', name: 'الكويت 🇰🇼', price: 35 },
+                  { code: 'morocco', name: 'المغرب 🇲🇦', price: 18 },
+                  { code: 'algeria', name: 'الجزائر 🇩🇿', price: 18 },
+                  { code: 'turkey', name: 'تركيا 🇹🇷', price: 18 },
+                  { code: 'usa', name: 'أمريكا 🇺🇸', price: 12 },
+                  { code: 'uk', name: 'بريطانيا 🇬🇧', price: 15 }
+                ].map(c => (
+                  <button
+                    key={c.code}
+                    onClick={() => handleQuickAddCountry(c, priceForm.service)}
+                    className="px-3.5 py-1.5 bg-slate-950 hover:bg-emerald-950/60 border border-slate-800 hover:border-emerald-500/50 rounded-xl text-xs font-bold text-slate-300 hover:text-white transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>{c.name}</span>
+                    <span className="text-emerald-400 font-mono text-[10px]">({c.price}₽)</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Manual Add / Edit Form */}
             <form onSubmit={handleSavePrice} className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-4">
               <h3 className="text-sm font-black text-white flex items-center gap-2">
                 <Plus size={18} className="text-emerald-400" />
-                إضافة أو تعديل سعر دولة فورياً (الأمر المباشر: /setprice)
+                تخصيص دولة جديدة أو تعديل السعر وربطها بموقع محدد
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 text-xs">
                 <div>
                   <label className="block text-slate-400 font-bold mb-1">البرنامج / الخدمة:</label>
                   <select
@@ -1052,7 +1244,7 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 font-bold mb-1">السعر للعميل بالروبل (₽):</label>
+                  <label className="block text-slate-400 font-bold mb-1">السعر للعميل (₽):</label>
                   <input
                     type="number"
                     value={priceForm.priceRub}
@@ -1060,40 +1252,96 @@ export default function App() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-emerald-400 font-mono font-black outline-none focus:border-blue-500"
                   />
                 </div>
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">السيرفر والموقع المربوط:</label>
+                  <select
+                    value={priceForm.serverId}
+                    onChange={e => setPriceForm({ ...priceForm, serverId: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-bold outline-none focus:border-blue-500 text-xs"
+                  >
+                    <option value="hero-sms">👑 سيرفر HeroSMS (#1513844)</option>
+                    <option value="srv-1">💎 سيرفر 5SIM.NET (مصطفى)</option>
+                    {servers.filter(s => s.id !== 'hero-sms' && s.id !== 'srv-1').map(s => (
+                      <option key={s.id} value={s.id}>⚡ {s.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="flex justify-end pt-2">
                 <button
                   type="submit"
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-600/30 cursor-pointer"
                 >
-                  حفظ وتطبيق السعر فورياً
+                  حفظ وتطبيق الدولة فورياً
                 </button>
               </div>
             </form>
 
-            {/* Current Prices Tables */}
+            {/* Current Prices Tables with Linked Server and Quick Adjust */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* WhatsApp Prices */}
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <h3 className="font-black text-sm text-emerald-400 flex items-center gap-2">
                     <MessageSquare size={16} />
-                    أسعار أرقام WhatsApp الحالية
+                    دول وأسعار أرقام WhatsApp وسيرفراتها
                   </h3>
                   <span className="text-xs text-slate-400 font-mono">
                     {Object.keys(customPrices.whatsapp || {}).length} دول
                   </span>
                 </div>
-                <div className="divide-y divide-slate-800/60 max-h-[360px] overflow-y-auto pr-1">
+                <div className="divide-y divide-slate-800/60 max-h-[420px] overflow-y-auto pr-1">
                   {Object.entries(customPrices.whatsapp || {}).map(([c, info]) => (
-                    <div key={c} className="py-2.5 flex items-center justify-between text-xs">
+                    <div key={c} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                       <div>
-                        <span className="font-bold text-white block">{info.name}</span>
-                        <span className="text-[10px] text-slate-500 font-mono">{c}</span>
+                        <span className="font-bold text-white block text-sm">{info.name}</span>
+                        <span className="text-[10px] text-slate-500 font-mono block">{c}</span>
                       </div>
-                      <span className="font-black font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                        {info.priceRub} ₽
-                      </span>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Linked Server Select */}
+                        <select
+                          value={info.serverId || 'hero-sms'}
+                          onChange={e => handleChangeCountryServer('whatsapp', c, e.target.value)}
+                          className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1 text-[11px] text-slate-300 font-bold focus:border-blue-500"
+                        >
+                          <option value="hero-sms">👑 HeroSMS</option>
+                          <option value="srv-1">💎 5SIM.NET</option>
+                          {servers.filter(s => s.id !== 'hero-sms' && s.id !== 'srv-1').map(s => (
+                            <option key={s.id} value={s.id}>⚡ {s.name.slice(0, 14)}</option>
+                          ))}
+                        </select>
+
+                        {/* Quick +/- buttons */}
+                        <div className="flex items-center gap-1 bg-slate-950 rounded-xl border border-slate-800 p-0.5">
+                          <button
+                            onClick={() => handleAdjustCountryPrice('whatsapp', c, -1)}
+                            className="w-6 h-6 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center font-bold cursor-pointer text-xs"
+                            title="إنقاص 1 ₽"
+                          >
+                            -
+                          </button>
+                          <span className="px-2 font-mono font-black text-emerald-400 text-xs">
+                            {info.priceRub} ₽
+                          </span>
+                          <button
+                            onClick={() => handleAdjustCountryPrice('whatsapp', c, 1)}
+                            className="w-6 h-6 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center font-bold cursor-pointer text-xs"
+                            title="زيادة 1 ₽"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Delete button */}
+                        <button
+                          onClick={() => handleDeleteCountry('whatsapp', c)}
+                          className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg cursor-pointer"
+                          title="حذف الدولة"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1104,22 +1352,64 @@ export default function App() {
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <h3 className="font-black text-sm text-blue-400 flex items-center gap-2">
                     <Radio size={16} />
-                    أسعار أرقام Telegram الحالية
+                    دول وأسعار أرقام Telegram وسيرفراتها
                   </h3>
                   <span className="text-xs text-slate-400 font-mono">
                     {Object.keys(customPrices.telegram || {}).length} دول
                   </span>
                 </div>
-                <div className="divide-y divide-slate-800/60 max-h-[360px] overflow-y-auto pr-1">
+                <div className="divide-y divide-slate-800/60 max-h-[420px] overflow-y-auto pr-1">
                   {Object.entries(customPrices.telegram || {}).map(([c, info]) => (
-                    <div key={c} className="py-2.5 flex items-center justify-between text-xs">
+                    <div key={c} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                       <div>
-                        <span className="font-bold text-white block">{info.name}</span>
-                        <span className="text-[10px] text-slate-500 font-mono">{c}</span>
+                        <span className="font-bold text-white block text-sm">{info.name}</span>
+                        <span className="text-[10px] text-slate-500 font-mono block">{c}</span>
                       </div>
-                      <span className="font-black font-mono text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/20">
-                        {info.priceRub} ₽
-                      </span>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Linked Server Select */}
+                        <select
+                          value={info.serverId || 'hero-sms'}
+                          onChange={e => handleChangeCountryServer('telegram', c, e.target.value)}
+                          className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1 text-[11px] text-slate-300 font-bold focus:border-blue-500"
+                        >
+                          <option value="hero-sms">👑 HeroSMS</option>
+                          <option value="srv-1">💎 5SIM.NET</option>
+                          {servers.filter(s => s.id !== 'hero-sms' && s.id !== 'srv-1').map(s => (
+                            <option key={s.id} value={s.id}>⚡ {s.name.slice(0, 14)}</option>
+                          ))}
+                        </select>
+
+                        {/* Quick +/- buttons */}
+                        <div className="flex items-center gap-1 bg-slate-950 rounded-xl border border-slate-800 p-0.5">
+                          <button
+                            onClick={() => handleAdjustCountryPrice('telegram', c, -1)}
+                            className="w-6 h-6 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center font-bold cursor-pointer text-xs"
+                            title="إنقاص 1 ₽"
+                          >
+                            -
+                          </button>
+                          <span className="px-2 font-mono font-black text-blue-400 text-xs">
+                            {info.priceRub} ₽
+                          </span>
+                          <button
+                            onClick={() => handleAdjustCountryPrice('telegram', c, 1)}
+                            className="w-6 h-6 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center font-bold cursor-pointer text-xs"
+                            title="زيادة 1 ₽"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Delete button */}
+                        <button
+                          onClick={() => handleDeleteCountry('telegram', c)}
+                          className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg cursor-pointer"
+                          title="حذف الدولة"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

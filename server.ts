@@ -238,26 +238,49 @@ if (!customServers.some(s => s.id === 'hero-sms')) {
   saveJson('servers.json', customServers);
 }
 
-// Custom Prices in Rubles
-let customPrices = loadJson<Record<string, Record<string, { name: string; priceRub: number; costUsd: number }>>>('custom_prices.json', {
+// Custom Prices in Rubles with Linked SMS Provider Servers
+interface CountryPriceConfig {
+  name: string;
+  priceRub: number;
+  costUsd: number;
+  serverId?: string;
+  serverName?: string;
+}
+
+let customPrices = loadJson<Record<string, Record<string, CountryPriceConfig>>>('custom_prices.json', {
   whatsapp: {
-    albania: { name: 'ألبانيا 🇦🇱 (الأكثر طلباً)', priceRub: 15.0, costUsd: 0.24 },
-    angola: { name: 'أنغولا 🇦🇴', priceRub: 18.0, costUsd: 0.32 },
-    colombia: { name: 'كولومبيا 🇨🇴', priceRub: 15.0, costUsd: 0.15 },
-    argentina: { name: 'الأرجنتين 🇦🇷', priceRub: 16.0, costUsd: 0.25 },
-    egypt: { name: 'مصر 🇪🇬', priceRub: 20.0, costUsd: 0.20 },
-    afghanistan: { name: 'أفغانستان 🇦🇫', priceRub: 22.0, costUsd: 0.45 },
-    russia: { name: 'روسيا 🇷🇺', priceRub: 45.0, costUsd: 0.60 }
+    yemen: { name: 'اليمن 🇾🇪', priceRub: 25.0, costUsd: 0.30, serverId: 'hero-sms', serverName: 'HeroSMS' },
+    saudi: { name: 'السعودية 🇸🇦', priceRub: 30.0, costUsd: 0.40, serverId: 'hero-sms', serverName: 'HeroSMS' },
+    albania: { name: 'ألبانيا 🇦🇱 (الأكثر طلباً)', priceRub: 15.0, costUsd: 0.24, serverId: 'hero-sms', serverName: 'HeroSMS' },
+    angola: { name: 'أنغولا 🇦🇴', priceRub: 18.0, costUsd: 0.32, serverId: 'srv-1', serverName: '5SIM.NET' },
+    colombia: { name: 'كولومبيا 🇨🇴 (أرخص سعر)', priceRub: 10.0, costUsd: 0.15, serverId: 'srv-1', serverName: '5SIM.NET' },
+    argentina: { name: 'الأرجنتين 🇦🇷', priceRub: 16.0, costUsd: 0.25, serverId: 'srv-1', serverName: '5SIM.NET' },
+    egypt: { name: 'مصر 🇪🇬 (متوفر 3M)', priceRub: 15.0, costUsd: 0.20, serverId: 'hero-sms', serverName: 'HeroSMS' },
+    afghanistan: { name: 'أفغانستان 🇦🇫', priceRub: 22.0, costUsd: 0.45, serverId: 'hero-sms', serverName: 'HeroSMS' },
+    russia: { name: 'روسيا 🇷🇺', priceRub: 20.0, costUsd: 0.25, serverId: 'hero-sms', serverName: 'HeroSMS' }
   },
   telegram: {
-    colombia: { name: 'كولومبيا 🇨🇴 (أرخص سعر $0.10)', priceRub: 10.0, costUsd: 0.10 },
-    egypt: { name: 'مصر 🇪🇬 (متوفر 3 مليون رقم)', priceRub: 15.0, costUsd: 0.20 },
-    angola: { name: 'أنغولا 🇦🇴', priceRub: 12.0, costUsd: 0.22 },
-    albania: { name: 'ألبانيا 🇦🇱', priceRub: 18.0, costUsd: 0.30 },
-    afghanistan: { name: 'أفغانستان 🇦🇫', priceRub: 20.0, costUsd: 0.45 },
-    argentina: { name: 'الأرجنتين 🇦🇷', priceRub: 22.0, costUsd: 0.50 }
+    colombia: { name: 'كولومبيا 🇨🇴 ($0.10)', priceRub: 10.0, costUsd: 0.10, serverId: 'srv-1', serverName: '5SIM.NET' },
+    egypt: { name: 'مصر 🇪🇬 (متوفر 3 مليون رقم)', priceRub: 15.0, costUsd: 0.20, serverId: 'hero-sms', serverName: 'HeroSMS' },
+    yemen: { name: 'اليمن 🇾🇪', priceRub: 25.0, costUsd: 0.30, serverId: 'hero-sms', serverName: 'HeroSMS' },
+    saudi: { name: 'السعودية 🇸🇦', priceRub: 28.0, costUsd: 0.35, serverId: 'hero-sms', serverName: 'HeroSMS' },
+    angola: { name: 'أنغولا 🇦🇴', priceRub: 12.0, costUsd: 0.22, serverId: 'srv-1', serverName: '5SIM.NET' },
+    albania: { name: 'ألبانيا 🇦🇱', priceRub: 18.0, costUsd: 0.30, serverId: 'hero-sms', serverName: 'HeroSMS' },
+    afghanistan: { name: 'أفغانستان 🇦🇫', priceRub: 20.0, costUsd: 0.45, serverId: 'hero-sms', serverName: 'HeroSMS' },
+    argentina: { name: 'الأرجنتين 🇦🇷', priceRub: 22.0, costUsd: 0.50, serverId: 'srv-1', serverName: '5SIM.NET' }
   }
 });
+
+// Ensure any loaded items have valid serverId fallback
+Object.values(customPrices).forEach(serviceGroup => {
+  Object.values(serviceGroup).forEach(c => {
+    if (!c.serverId) {
+      c.serverId = 'hero-sms';
+      c.serverName = 'HeroSMS';
+    }
+  });
+});
+saveJson('custom_prices.json', customPrices);
 
 let usersDb = loadJson<Record<string, UserProfile>>('users.json', {
   '8338869162': {
@@ -1496,66 +1519,360 @@ class TelegramBotRunner {
       return;
     }
 
-    // 3. Custom Prices Menu (prices_menu / custom_prices_menu)
-    if ((data === 'custom_prices_menu' || data === 'prices_menu') && isAdmin) {
-      const tgLines = Object.entries(customPrices.telegram || {}).map(([c, info]) => `• \`${c}\` ➔ *${info.priceRub} ₽* (${info.name})`).join('\n');
-      const waLines = Object.entries(customPrices.whatsapp || {}).map(([c, info]) => `• \`${c}\` ➔ *${info.priceRub} ₽* (${info.name})`).join('\n');
+    // 3. Interactive In-Bot Country, Price & Server Linking Center
+    if ((data === 'custom_prices_menu' || data === 'prices_menu' || data === 'c_list_wa' || data === 'c_list_tg') && isAdmin) {
+      const curSvc = (data === 'c_list_tg') ? 'telegram' : 'whatsapp';
+      const svcMap = customPrices[curSvc] || {};
+      const entries = Object.entries(svcMap);
 
-      const text = `🏷️ *لوحة إدارة وتعديل أسعار الدول من داخل البوت* 💰\n\n` +
-        `💬 *أسعار أرقام واتساب الحالية:*\n${waLines || 'لا توجد دول'}\n\n` +
-        `📢 *أسعار أرقام تيليجرام الحالية:*\n${tgLines || 'لا توجد دول'}\n\n` +
-        `━━━━━━━━━━━━━━━━━━\n` +
-        `✏️ *لإضافة أو تعديل أي دولة وسعرها فورياً أرسل بالشات:*\n` +
-        `\`/setprice <الخدمة> <كود_الدولة> <السعر> [الاسم_بالعربي]\`\n\n` +
-        `📌 *أمثلة جاهزة للنسخ والتعديل:*\n` +
-        `• \`/setprice wa yemen 25 اليمن 🇾🇪\`\n` +
-        `• \`/setprice wa colombia 12 كولومبيا 🇨🇴\`\n` +
-        `• \`/setprice tg colombia 8 كولومبيا 🇨🇴\`\n` +
-        `• \`/setprice tg egypt 14 مصر 🇪🇬\`\n` +
-        `• \`/setprice wa saudi 30 السعودية 🇸🇦\`\n\n` +
-        `🗑 *لحذف دولة من القائمة:*\n` +
-        `\`/del_country wa russia\``;
+      const text = `🌍 *لوحة إدارة وتخصيص الدول والأسعار وربط المواقع* ⚙️\n\n` +
+        `📱 الخدمة المعروضة حالياً: *${curSvc === 'whatsapp' ? 'واتساب (WhatsApp)' : 'تيليجرام (Telegram)'}*\n` +
+        `📊 إجمالي الدول المتاحة: *${entries.length} دولة*\n\n` +
+        `👇 *إضغط على أي دولة أدناه لتعديل سعرها أو ربطها بـ HeroSMS أو 5SIM فورياً:*`;
+
+      const keyboard: any[] = [
+        [
+          { text: curSvc === 'whatsapp' ? '🔘 واتساب (نشط)' : '💬 عرض واتساب', callback_data: 'c_list_wa' },
+          { text: curSvc === 'telegram' ? '🔘 تيليجرام (نشط)' : '📢 عرض تيليجرام', callback_data: 'c_list_tg' }
+        ]
+      ];
+
+      // List each country as a clickable action button
+      for (let i = 0; i < entries.length; i += 2) {
+        const row: any[] = [];
+        const [k1, item1] = entries[i];
+        const srvBadge1 = item1.serverName || (item1.serverId === 'hero-sms' ? 'HeroSMS' : '5SIM');
+        row.push({
+          text: `${item1.name} ¦ ${item1.priceRub} ₽ [${srvBadge1}]`,
+          callback_data: `c_edit_${curSvc}_${k1}`
+        });
+
+        if (i + 1 < entries.length) {
+          const [k2, item2] = entries[i + 1];
+          const srvBadge2 = item2.serverName || (item2.serverId === 'hero-sms' ? 'HeroSMS' : '5SIM');
+          row.push({
+            text: `${item2.name} ¦ ${item2.priceRub} ₽ [${srvBadge2}]`,
+            callback_data: `c_edit_${curSvc}_${k2}`
+          });
+        }
+        keyboard.push(row);
+      }
+
+      keyboard.push([
+        { text: '➕ إضافة دولة جديدة بضغطة زر', callback_data: `c_add_quick_${curSvc}` }
+      ]);
+
+      keyboard.push([
+        { text: '👑 ربط جميع الدول بـ HeroSMS', callback_data: `c_link_all_herosms_${curSvc}` },
+        { text: '💎 ربط جميع الدول بـ 5SIM', callback_data: `c_link_all_5sim_${curSvc}` }
+      ]);
+
+      keyboard.push([
+        { text: '🔙 رجوع للوحة الأدمن', callback_data: 'admin_panel' }
+      ]);
 
       await this.sendApi('editMessageText', {
         chat_id: chatId,
         message_id: messageId,
         text,
         parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [ { text: '➕ طريقة إضافة دولة جديدة', callback_data: 'add_country' } ],
-            [ { text: '🔙 رجوع للوحة الأدمن', callback_data: 'admin_panel' } ]
-          ]
-        }
+        reply_markup: { inline_keyboard: keyboard }
       });
       return;
     }
 
-    // 3.1 Guided Add Country Callback
-    if (data === 'add_country' && isAdmin) {
-      const text = `➕ *طريقة إضافة أو تعديل دولة وسعرها داخل البوت:* 🌐\n\n` +
-        `تستطيع إضافة أي دولة بالضغط على الأمر ونسخه وإرساله:\n\n` +
-        `1️⃣ *لواتساب:*\n` +
-        `\`/setprice wa colombia 12 كولومبيا 🇨🇴\`\n` +
-        `\`/setprice wa yemen 25 اليمن 🇾🇪\`\n` +
-        `\`/setprice wa egypt 18 مصر 🇪🇬\`\n\n` +
-        `2️⃣ *لتيليجرام:*\n` +
-        `\`/setprice tg colombia 8 كولومبيا 🇨🇴\`\n` +
-        `\`/setprice tg egypt 12 مصر 🇪🇬\`\n\n` +
-        `💡 فور إرسال الأمر، ستظهر الدولة بالسعر الجديد في قائمة الشراء فوراً لجميع العملاء!`;
+    // 3.1 Country Detail & Instant Action Controller
+    if (data.startsWith('c_edit_') && isAdmin) {
+      const parts = data.split('_'); // c, edit, svc, country
+      const svc = parts[2] || 'whatsapp';
+      const cKey = parts[3] || 'colombia';
+      const info = customPrices[svc]?.[cKey];
+
+      if (!info) {
+        await this.answerCallback(queryId, '⚠️ الدولة غير موجودة.', true);
+        return;
+      }
+
+      const linkedServer = info.serverName || (info.serverId === 'hero-sms' ? 'سيرفر HeroSMS المباشر (#1513844)' : 'سيرفر مصطفى (5SIM.NET)');
+
+      const text = `⚙️ *تخصيص وإدارة دولة:* *${info.name}* (\`${cKey}\`)\n\n` +
+        `📱 *التطبيق:* *${svc === 'whatsapp' ? 'واتساب' : 'تيليجرام'}*\n` +
+        `💰 *السعر الحالي للعملاء:* *${info.priceRub} ₽* (روبل)\n` +
+        `🌐 *السيرفر والموقع المربوط:* *${linkedServer}*\n\n` +
+        `👇 *إضغط على الأزرار أدناه للتحكم الفوري:*`;
+
+      const keyboard = [
+        [
+          { text: '➕ زيادة +1 ₽', callback_data: `c_inc_1_${svc}_${cKey}` },
+          { text: '➖ إنقاص -1 ₽', callback_data: `c_dec_1_${svc}_${cKey}` }
+        ],
+        [
+          { text: '➕ زيادة +5 ₽', callback_data: `c_inc_5_${svc}_${cKey}` },
+          { text: '➖ إنقاص -5 ₽', callback_data: `c_dec_5_${svc}_${cKey}` }
+        ],
+        [
+          { text: '👑 ربط بسيرفر HeroSMS (#1513844)', callback_data: `c_setserv_hero-sms_${svc}_${cKey}` }
+        ],
+        [
+          { text: '💎 ربط بسيرفر 5SIM.NET (مصطفى)', callback_data: `c_setserv_srv-1_${svc}_${cKey}` }
+        ],
+        [
+          { text: '🗑 حذف هذه الدولة نهائياً', callback_data: `c_del_${svc}_${cKey}` }
+        ],
+        [
+          { text: '🔙 رجوع لقائمة الدول', callback_data: `c_list_${svc === 'telegram' ? 'tg' : 'wa'}` }
+        ]
+      ];
 
       await this.sendApi('editMessageText', {
         chat_id: chatId,
         message_id: messageId,
         text,
         parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [ { text: '🏷️ جدول الأسعار الكامل', callback_data: 'custom_prices_menu' } ],
-            [ { text: '🔙 رجوع للوحة الأدمن', callback_data: 'admin_panel' } ]
-          ]
-        }
+        reply_markup: { inline_keyboard: keyboard }
       });
+      return;
+    }
+
+    // 3.2 Price Increment / Decrement Callbacks
+    if ((data.startsWith('c_inc_') || data.startsWith('c_dec_')) && isAdmin) {
+      const parts = data.split('_'); // c, inc/dec, delta, svc, country
+      const isInc = parts[1] === 'inc';
+      const delta = parseFloat(parts[2]) || 1;
+      const svc = parts[3] || 'whatsapp';
+      const cKey = parts[4] || 'colombia';
+
+      if (customPrices[svc]?.[cKey]) {
+        const item = customPrices[svc][cKey];
+        item.priceRub = Math.max(1, +(item.priceRub + (isInc ? delta : -delta)).toFixed(1));
+        saveJson('custom_prices.json', customPrices);
+
+        await this.answerCallback(queryId, `✅ تم ضبط السعر إلى ${item.priceRub} ₽`);
+
+        // Re-render country controller card with new price
+        const linkedServer = item.serverName || (item.serverId === 'hero-sms' ? 'سيرفر HeroSMS المباشر (#1513844)' : 'سيرفر مصطفى (5SIM.NET)');
+        const text = `⚙️ *تخصيص وإدارة دولة:* *${item.name}* (\`${cKey}\`)\n\n` +
+          `📱 *التطبيق:* *${svc === 'whatsapp' ? 'واتساب' : 'تيليجرام'}*\n` +
+          `💰 *السعر الحالي للعملاء:* *${item.priceRub} ₽* (روبل) ✅\n` +
+          `🌐 *السيرفر والموقع المربوط:* *${linkedServer}*\n\n` +
+          `👇 *إضغط على الأزرار أدناه للتحكم الفوري:*`;
+
+        const keyboard = [
+          [
+            { text: '➕ زيادة +1 ₽', callback_data: `c_inc_1_${svc}_${cKey}` },
+            { text: '➖ إنقاص -1 ₽', callback_data: `c_dec_1_${svc}_${cKey}` }
+          ],
+          [
+            { text: '➕ زيادة +5 ₽', callback_data: `c_inc_5_${svc}_${cKey}` },
+            { text: '➖ إنقاص -5 ₽', callback_data: `c_dec_5_${svc}_${cKey}` }
+          ],
+          [
+            { text: '👑 ربط بسيرفر HeroSMS (#1513844)', callback_data: `c_setserv_hero-sms_${svc}_${cKey}` }
+          ],
+          [
+            { text: '💎 ربط بسيرفر 5SIM.NET (مصطفى)', callback_data: `c_setserv_srv-1_${svc}_${cKey}` }
+          ],
+          [
+            { text: '🗑 حذف هذه الدولة نهائياً', callback_data: `c_del_${svc}_${cKey}` }
+          ],
+          [
+            { text: '🔙 رجوع لقائمة الدول', callback_data: `c_list_${svc === 'telegram' ? 'tg' : 'wa'}` }
+          ]
+        ];
+
+        await this.sendApi('editMessageText', {
+          chat_id: chatId,
+          message_id: messageId,
+          text,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: keyboard }
+        });
+        return;
+      }
+    }
+
+    // 3.3 Set Linked Server Callback (c_setserv_)
+    if (data.startsWith('c_setserv_') && isAdmin) {
+      const parts = data.split('_'); // c, setserv, serverId, svc, country
+      const serverId = parts[2] || 'hero-sms';
+      const svc = parts[3] || 'whatsapp';
+      const cKey = parts[4] || 'colombia';
+
+      if (customPrices[svc]?.[cKey]) {
+        const item = customPrices[svc][cKey];
+        item.serverId = serverId;
+        item.serverName = serverId === 'hero-sms' ? 'HeroSMS' : '5SIM.NET';
+        saveJson('custom_prices.json', customPrices);
+
+        await this.answerCallback(queryId, `✅ تم ربط ${item.name} بسيرفر ${item.serverName} بنجاح!`, true);
+
+        // Re-render
+        const linkedServer = item.serverId === 'hero-sms' ? 'سيرفر HeroSMS المباشر (#1513844)' : 'سيرفر مصطفى (5SIM.NET)';
+        const text = `⚙️ *تخصيص وإدارة دولة:* *${item.name}* (\`${cKey}\`)\n\n` +
+          `📱 *التطبيق:* *${svc === 'whatsapp' ? 'واتساب' : 'تيليجرام'}*\n` +
+          `💰 *السعر الحالي للعملاء:* *${item.priceRub} ₽* (روبل)\n` +
+          `🌐 *السيرفر والموقع المربوط:* *${linkedServer}* ✅\n\n` +
+          `👇 *إضغط على الأزرار أدناه للتحكم الفوري:*`;
+
+        const keyboard = [
+          [
+            { text: '➕ زيادة +1 ₽', callback_data: `c_inc_1_${svc}_${cKey}` },
+            { text: '➖ إنقاص -1 ₽', callback_data: `c_dec_1_${svc}_${cKey}` }
+          ],
+          [
+            { text: '➕ زيادة +5 ₽', callback_data: `c_inc_5_${svc}_${cKey}` },
+            { text: '➖ إنقاص -5 ₽', callback_data: `c_dec_5_${svc}_${cKey}` }
+          ],
+          [
+            { text: '👑 ربط بسيرفر HeroSMS (#1513844)', callback_data: `c_setserv_hero-sms_${svc}_${cKey}` }
+          ],
+          [
+            { text: '💎 ربط بسيرفر 5SIM.NET (مصطفى)', callback_data: `c_setserv_srv-1_${svc}_${cKey}` }
+          ],
+          [
+            { text: '🗑 حذف هذه الدولة نهائياً', callback_data: `c_del_${svc}_${cKey}` }
+          ],
+          [
+            { text: '🔙 رجوع لقائمة الدول', callback_data: `c_list_${svc === 'telegram' ? 'tg' : 'wa'}` }
+          ]
+        ];
+
+        await this.sendApi('editMessageText', {
+          chat_id: chatId,
+          message_id: messageId,
+          text,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: keyboard }
+        });
+        return;
+      }
+    }
+
+    // 3.4 Delete Country Callback (c_del_)
+    if (data.startsWith('c_del_') && isAdmin) {
+      const parts = data.split('_');
+      const svc = parts[2] || 'whatsapp';
+      const cKey = parts[3] || 'colombia';
+
+      if (customPrices[svc]?.[cKey]) {
+        delete customPrices[svc][cKey];
+        saveJson('custom_prices.json', customPrices);
+        await this.answerCallback(queryId, `🗑 تم حذف الدولة من قائمة ${svc} بنجاح!`, true);
+      }
+
+      // Return to list
+      const redirectData = svc === 'telegram' ? 'c_list_tg' : 'c_list_wa';
+      await this.handleCallback({ ...cb, data: redirectData });
+      return;
+    }
+
+    // 3.5 Quick Add Country Menu (c_add_quick_)
+    if (data.startsWith('c_add_quick_') && isAdmin) {
+      const svc = data.includes('tg') ? 'telegram' : 'whatsapp';
+      const text = `➕ *إضافة دولة جديدة فورياً بضغطة زر:* 🌐\n\n` +
+        `اختر الدولة التي تريد إضافتها لقائمة *${svc === 'whatsapp' ? 'واتساب' : 'تيليجرام'}* وسيتم إضافتها وتحديد سعرها وربطها بسيرفر HeroSMS فورياً:`;
+
+      const popularCountries = [
+        { code: 'yemen', name: 'اليمن 🇾🇪', price: 25 },
+        { code: 'saudi', name: 'السعودية 🇸🇦', price: 30 },
+        { code: 'egypt', name: 'مصر 🇪🇬', price: 15 },
+        { code: 'iraq', name: 'العراق 🇮🇶', price: 20 },
+        { code: 'jordan', name: 'الأردن 🇯🇴', price: 22 },
+        { code: 'uae', name: 'الإمارات 🇦🇪', price: 28 },
+        { code: 'morocco', name: 'المغرب 🇲🇦', price: 18 },
+        { code: 'algeria', name: 'الجزائر 🇩🇿', price: 18 },
+        { code: 'kuwait', name: 'الكويت 🇰🇼', price: 35 },
+        { code: 'turkey', name: 'تركيا 🇹🇷', price: 18 },
+        { code: 'usa', name: 'أمريكا 🇺🇸', price: 12 },
+        { code: 'uk', name: 'بريطانيا 🇬🇧', price: 15 }
+      ];
+
+      const keyboard: any[] = [];
+      for (let i = 0; i < popularCountries.length; i += 2) {
+        const row: any[] = [];
+        const p1 = popularCountries[i];
+        row.push({ text: `${p1.name} (${p1.price}₽)`, callback_data: `c_doadd_${p1.code}_${p1.price}_${svc}` });
+
+        if (i + 1 < popularCountries.length) {
+          const p2 = popularCountries[i + 1];
+          row.push({ text: `${p2.name} (${p2.price}₽)`, callback_data: `c_doadd_${p2.code}_${p2.price}_${svc}` });
+        }
+        keyboard.push(row);
+      }
+
+      keyboard.push([
+        { text: '🔙 رجوع لقائمة الدول', callback_data: `c_list_${svc === 'telegram' ? 'tg' : 'wa'}` }
+      ]);
+
+      await this.sendApi('editMessageText', {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: keyboard }
+      });
+      return;
+    }
+
+    // 3.6 Execute Quick Add (c_doadd_)
+    if (data.startsWith('c_doadd_') && isAdmin) {
+      const parts = data.split('_'); // c, doadd, code, price, svc
+      const cCode = parts[2] || 'yemen';
+      const cPrice = parseFloat(parts[3]) || 20;
+      const svc = parts[4] || 'whatsapp';
+
+      const namesMap: Record<string, string> = {
+        yemen: 'اليمن 🇾🇪',
+        saudi: 'السعودية 🇸🇦',
+        egypt: 'مصر 🇪🇬',
+        iraq: 'العراق 🇮🇶',
+        jordan: 'الأردن 🇯🇴',
+        uae: 'الإمارات 🇦🇪',
+        morocco: 'المغرب 🇲🇦',
+        algeria: 'الجزائر 🇩🇿',
+        kuwait: 'الكويت 🇰🇼',
+        turkey: 'تركيا 🇹🇷',
+        usa: 'أمريكا 🇺🇸',
+        uk: 'بريطانيا 🇬🇧'
+      };
+
+      if (!customPrices[svc]) customPrices[svc] = {};
+      customPrices[svc][cCode] = {
+        name: namesMap[cCode] || cCode.toUpperCase(),
+        priceRub: cPrice,
+        costUsd: 0.20,
+        serverId: 'hero-sms',
+        serverName: 'HeroSMS'
+      };
+      saveJson('custom_prices.json', customPrices);
+
+      await this.answerCallback(queryId, `🎉 تمت إضافة ${namesMap[cCode] || cCode} بسعر ${cPrice} ₽ بنجاح!`, true);
+
+      // Return to list
+      const redirectData = svc === 'telegram' ? 'c_list_tg' : 'c_list_wa';
+      await this.handleCallback({ ...cb, data: redirectData });
+      return;
+    }
+
+    // 3.7 Bulk Link All Countries to HeroSMS or 5SIM
+    if (data.startsWith('c_link_all_') && isAdmin) {
+      const isHero = data.includes('herosms');
+      const targetSrvId = isHero ? 'hero-sms' : 'srv-1';
+      const targetSrvName = isHero ? 'HeroSMS' : '5SIM.NET';
+      const svc = data.includes('tg') ? 'telegram' : 'whatsapp';
+
+      Object.values(customPrices).forEach(group => {
+        Object.values(group).forEach(c => {
+          c.serverId = targetSrvId;
+          c.serverName = targetSrvName;
+        });
+      });
+      saveJson('custom_prices.json', customPrices);
+
+      await this.answerCallback(queryId, `👑 تم ربط كافة الدول بسيرفر ${targetSrvName} بنجاح!`, true);
+
+      const redirectData = svc === 'telegram' ? 'c_list_tg' : 'c_list_wa';
+      await this.handleCallback({ ...cb, data: redirectData });
       return;
     }
 
@@ -1898,14 +2215,24 @@ class TelegramBotRunner {
       // 2. User has balance -> Deduct immediately
       updateUserBalance(userId, -priceRub);
 
+      // 3. Check which server this country is linked to
+      const countryConfig = customPrices[service]?.[country];
+      const targetServerId = countryConfig?.serverId || (storeSettings.activeProvider === 'herosms' ? 'hero-sms' : 'srv-1');
+      const providerDisplayName = targetServerId === 'hero-sms' ? 'سيرفر HeroSMS المباشر (#1513844)' : 'سيرفر مصطفى (5SIM.NET)';
+
       await this.sendApi('sendMessage', {
         chat_id: chatId,
-        text: `⏳ *جاري فحص أرخص الأسعار والمشغلين في 5SIM وسحب الرقم... يرجى الانتظار ثوانٍ*`,
+        text: `⏳ *جاري الاتصال بـ ${providerDisplayName} وسحب الرقم لدولة ${country}... يرجى الانتظار ثوانٍ*`,
         parse_mode: 'Markdown'
       });
 
-      // 3. Call Real 5SIM API with automatic cheapest operator
-      const realResult = await buy5SimRealNumber(country, service);
+      // Call Linked Server API
+      let realResult: any;
+      if (targetServerId === 'hero-sms') {
+        realResult = await buyHeroSmsNumber(country, service);
+      } else {
+        realResult = await buy5SimRealNumber(country, service);
+      }
 
       // Handle Provider Errors
       if (!realResult.success) {
@@ -1916,7 +2243,7 @@ class TelegramBotRunner {
           await this.sendApi('sendMessage', {
             chat_id: chatId,
             text: `❌ *لم يتم تنفيذ طلبك*\n\n` +
-              `نظراً لعدم توفر أرقام حالياً في موقع 5sim لدولة *${country}* لتطبيق *${service}*.\n` +
+              `نظراً لعدم توفر أرقام حالياً في ${providerDisplayName} لدولة *${country}* لتطبيق *${service}*.\n` +
               `تم استرجاع رصيدك كاملاً (*+${priceRub} ₽*).\nرصيدك الحالي: *${user.balance} ₽*.\n\n` +
               `💡 جرب دولة أخرى ذات توفر عالي مثل (كولومبيا 🇨🇴 أو مصر 🇪🇬 أو ألبانيا 🇦🇱 أو أنغولا 🇦🇴).`,
             parse_mode: 'Markdown',
@@ -1933,7 +2260,7 @@ class TelegramBotRunner {
         if (realResult.error === 'NO_BALANCE') {
           await this.sendApi('sendMessage', {
             chat_id: chatId,
-            text: `⚠️ *رصيد السيرفر في موقع التوريد 5sim غير كافٍ حالياً*\n\n` +
+            text: `⚠️ *رصيد السيرفر في ${providerDisplayName} غير كافٍ حالياً*\n\n` +
               `تم استرجاع رصيدك كاملاً (*+${priceRub} ₽*).\nتم إشعار إدارة البوت لإعادة شحن رصيد الموقع فوراً.`,
             parse_mode: 'Markdown'
           });
@@ -1943,7 +2270,7 @@ class TelegramBotRunner {
         // Generic error
         await this.sendApi('sendMessage', {
           chat_id: chatId,
-          text: `⚠️ تعذر إتمام الطلب من المزود: ${realResult.error}.\nتم استرجاع رصيدك كاملاً.`,
+          text: `⚠️ تعذر إتمام الطلب من ${providerDisplayName}: ${realResult.error}.\nتم استرجاع رصيدك كاملاً.`,
           parse_mode: 'Markdown'
         });
         return;
@@ -1966,14 +2293,14 @@ class TelegramBotRunner {
         priceRub,
         status: 'PENDING',
         createdAt: Date.now(),
-        provider: '5sim.net (مصطفى)'
+        provider: providerDisplayName
       };
       saveJson('active_orders.json', activeOrdersDb);
 
       user.totalPurchased = (user.totalPurchased || 0) + 1;
       saveJson('users.json', usersDb);
 
-      const orderText = `✅ *تم شراء وتخصيص الرقم بنجاح من 5SIM.NET!* 📱\n\n` +
+      const orderText = `✅ *تم شراء وتخصيص الرقم بنجاح من ${providerDisplayName}!* 📱\n\n` +
         `☎️ *الرقم:* \`${phone}\`\n` +
         `🆔 *رقم الطلب في 5sim:* \`#${orderId}\` _(يظهر فورياً في موقع 5sim)_\n` +
         `🎯 *المشغل المختار:* \`${opName}\` (الأرخص سعراً بالموقع: \`$${costUsd} USD\`)\n` +
@@ -2479,14 +2806,46 @@ app.get('/api/providers/check-code', async (req, res) => {
 app.get('/api/store/custom-prices', (req, res) => res.json(customPrices));
 
 app.post('/api/store/custom-prices', (req, res) => {
-  const { service, country, priceRub } = req.body;
-  if (service && country && priceRub) {
+  const { service, country, priceRub, name, serverId, serverName } = req.body;
+  if (service && country) {
     if (!customPrices[service]) customPrices[service] = {};
     if (!customPrices[service][country]) {
-      customPrices[service][country] = { name: country, priceRub, costUsd: 0.2 };
+      customPrices[service][country] = {
+        name: name || country,
+        priceRub: parseFloat(priceRub) || 15,
+        costUsd: 0.2,
+        serverId: serverId || 'hero-sms',
+        serverName: serverName || (serverId === 'srv-1' ? '5SIM.NET' : 'HeroSMS')
+      };
     } else {
-      customPrices[service][country].priceRub = priceRub;
+      if (priceRub !== undefined) customPrices[service][country].priceRub = parseFloat(priceRub);
+      if (name) customPrices[service][country].name = name;
+      if (serverId) {
+        customPrices[service][country].serverId = serverId;
+        customPrices[service][country].serverName = serverName || (serverId === 'srv-1' ? '5SIM.NET' : (serverId === 'hero-sms' ? 'HeroSMS' : serverId));
+      }
     }
+    saveJson('custom_prices.json', customPrices);
+  }
+  res.json({ success: true, customPrices });
+});
+
+app.post('/api/store/custom-prices/bulk-link', (req, res) => {
+  const { serverId, serverName } = req.body;
+  Object.values(customPrices).forEach(group => {
+    Object.values(group).forEach(item => {
+      item.serverId = serverId;
+      item.serverName = serverName;
+    });
+  });
+  saveJson('custom_prices.json', customPrices);
+  res.json({ success: true, customPrices });
+});
+
+app.delete('/api/store/custom-prices/:service/:country', (req, res) => {
+  const { service, country } = req.params;
+  if (customPrices[service] && customPrices[service][country]) {
+    delete customPrices[service][country];
     saveJson('custom_prices.json', customPrices);
   }
   res.json({ success: true, customPrices });
