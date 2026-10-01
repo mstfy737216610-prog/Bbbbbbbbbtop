@@ -280,6 +280,47 @@ export default function App() {
     }
   };
 
+  // Rename a server
+  const [editingServerId, setEditingServerId] = useState<string | null>(null);
+  const [editingServerName, setEditingServerName] = useState('');
+
+  const handleRenameServer = async (serverId: string, newName: string) => {
+    if (!newName.trim()) return;
+    try {
+      const res = await fetch(`/api/store/servers/${serverId}/rename`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName.trim() })
+      });
+      const data = await res.json();
+      if (data.success && data.servers) {
+        setServers(data.servers);
+        setEditingServerId(null);
+        showToast(`✅ تم تحديث اسم السيرفر إلى: ${newName}`, 'success');
+      }
+    } catch (e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
+  // Adjust all prices by percentage (+10%, -10%, etc)
+  const handleAdjustPercent = async (percent: number) => {
+    try {
+      const res = await fetch('/api/store/custom-prices/adjust-percent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ percent })
+      });
+      const data = await res.json();
+      if (data.success && data.customPrices) {
+        setCustomPrices(data.customPrices);
+        showToast(`⚡ تم تطبيق ${percent > 0 ? '+' : ''}${percent}% على كافة الأسعار بنجاح!`, 'success');
+      }
+    } catch (e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
   // Quick Add Preset Country
   const handleQuickAddCountry = async (country: { code: string; name: string; price: number }, service: string = 'whatsapp') => {
     try {
@@ -955,7 +996,7 @@ export default function App() {
                     <label className="block text-slate-300 font-bold mb-1">اسم الموقع / السيرفر</label>
                     <input
                       type="text"
-                      placeholder="مثال: موقع التوريد السريع أو سيرفر محمد"
+                      placeholder="مثال: سيرفر الكحلاني (عشوائي) أو موقع HeroSMS"
                       value={serverForm.name}
                       onChange={e => setServerForm({ ...serverForm, name: e.target.value })}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white outline-none focus:border-blue-500"
@@ -1053,9 +1094,51 @@ export default function App() {
                         }`}>
                           <Server size={18} />
                         </div>
-                        <div>
-                          <h3 className="font-black text-sm text-white">{srv.name}</h3>
-                          <span className="text-[10px] text-slate-400 font-mono">{srv.apiType}</span>
+                        <div className="flex-1 min-w-0">
+                          {editingServerId === srv.id ? (
+                            <div className="flex items-center gap-1.5 my-1">
+                              <input
+                                type="text"
+                                value={editingServerName}
+                                onChange={e => setEditingServerName(e.target.value)}
+                                className="bg-slate-950 border border-blue-500 rounded-lg px-2 py-1 text-xs text-white outline-none font-bold w-full"
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => handleRenameServer(srv.id, editingServerName)}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold cursor-pointer shrink-0"
+                              >
+                                حفظ
+                              </button>
+                              <button
+                                onClick={() => setEditingServerId(null)}
+                                className="px-2 py-1 bg-slate-800 text-slate-400 hover:text-white rounded-lg text-[10px] cursor-pointer shrink-0"
+                              >
+                                إلغاء
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h3 className="font-black text-sm text-white truncate">{srv.name}</h3>
+                              <button
+                                onClick={() => { setEditingServerId(srv.id); setEditingServerName(srv.name); }}
+                                className="text-slate-400 hover:text-amber-400 transition-colors cursor-pointer p-0.5"
+                                title="تعديل اسم السيرفر (مثال: سيرفر الكحلاني)"
+                              >
+                                <Edit3 size={13} />
+                              </button>
+                              {srv.name !== 'سيرفر الكحلاني (عشوائي)' && (
+                                <button
+                                  onClick={() => handleRenameServer(srv.id, 'سيرفر الكحلاني (عشوائي)')}
+                                  className="text-[10px] bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-700/60 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                                  title="تسميته فوراً: سيرفر الكحلاني (عشوائي)"
+                                >
+                                  🎲 للكحلاني
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          <span className="text-[10px] text-slate-400 font-mono block">{srv.apiType}</span>
                         </div>
                       </div>
                       <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${srv.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-500'}`}>
@@ -1147,6 +1230,13 @@ export default function App() {
               {/* Bulk Actions */}
               <div className="flex flex-wrap items-center gap-2">
                 <button
+                  onClick={() => handleBulkLinkServer('srv-kahlani', 'سيرفر الكحلاني (عشوائي)')}
+                  className="px-4 py-2.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 rounded-2xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shadow"
+                >
+                  <span>🎲</span>
+                  ربط كافة الدول بسيرفر الكحلاني (عشوائي)
+                </button>
+                <button
                   onClick={() => handleBulkLinkServer('hero-sms', 'HeroSMS')}
                   className="px-4 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-2xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shadow"
                 >
@@ -1159,6 +1249,20 @@ export default function App() {
                 >
                   <span>💎</span>
                   ربط كافة الدول بـ 5SIM.NET (مصطفى)
+                </button>
+                <button
+                  onClick={() => handleAdjustPercent(10)}
+                  className="px-3.5 py-2.5 bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 rounded-2xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow"
+                >
+                  <TrendingUp size={14} />
+                  +10% على كل الأسعار
+                </button>
+                <button
+                  onClick={() => handleAdjustPercent(-10)}
+                  className="px-3.5 py-2.5 bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-rose-300 rounded-2xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow"
+                >
+                  <TrendingUp size={14} className="rotate-180" />
+                  -10% على كل الأسعار
                 </button>
               </div>
             </div>
@@ -1259,9 +1363,10 @@ export default function App() {
                     onChange={e => setPriceForm({ ...priceForm, serverId: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-bold outline-none focus:border-blue-500 text-xs"
                   >
+                    <option value="srv-kahlani">🎲 سيرفر الكحلاني (عشوائي)</option>
                     <option value="hero-sms">👑 سيرفر HeroSMS (#1513844)</option>
                     <option value="srv-1">💎 سيرفر 5SIM.NET (مصطفى)</option>
-                    {servers.filter(s => s.id !== 'hero-sms' && s.id !== 'srv-1').map(s => (
+                    {servers.filter(s => s.id !== 'hero-sms' && s.id !== 'srv-1' && s.id !== 'srv-kahlani').map(s => (
                       <option key={s.id} value={s.id}>⚡ {s.name}</option>
                     ))}
                   </select>
@@ -1305,9 +1410,10 @@ export default function App() {
                           onChange={e => handleChangeCountryServer('whatsapp', c, e.target.value)}
                           className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1 text-[11px] text-slate-300 font-bold focus:border-blue-500"
                         >
+                          <option value="srv-kahlani">🎲 الكحلاني (عشوائي)</option>
                           <option value="hero-sms">👑 HeroSMS</option>
                           <option value="srv-1">💎 5SIM.NET</option>
-                          {servers.filter(s => s.id !== 'hero-sms' && s.id !== 'srv-1').map(s => (
+                          {servers.filter(s => s.id !== 'hero-sms' && s.id !== 'srv-1' && s.id !== 'srv-kahlani').map(s => (
                             <option key={s.id} value={s.id}>⚡ {s.name.slice(0, 14)}</option>
                           ))}
                         </select>
@@ -1373,9 +1479,10 @@ export default function App() {
                           onChange={e => handleChangeCountryServer('telegram', c, e.target.value)}
                           className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1 text-[11px] text-slate-300 font-bold focus:border-blue-500"
                         >
+                          <option value="srv-kahlani">🎲 الكحلاني (عشوائي)</option>
                           <option value="hero-sms">👑 HeroSMS</option>
                           <option value="srv-1">💎 5SIM.NET</option>
-                          {servers.filter(s => s.id !== 'hero-sms' && s.id !== 'srv-1').map(s => (
+                          {servers.filter(s => s.id !== 'hero-sms' && s.id !== 'srv-1' && s.id !== 'srv-kahlani').map(s => (
                             <option key={s.id} value={s.id}>⚡ {s.name.slice(0, 14)}</option>
                           ))}
                         </select>

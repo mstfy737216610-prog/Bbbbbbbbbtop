@@ -1,5 +1,20 @@
 [
   {
+    "id": "srv-kahlani",
+    "name": "سلفر الكحلاني (عشوائي)",
+    "url": "https://hero-sms.com/stubs/handler_api.php",
+    "apiKey": "HEROSMS_USER_KEY_1513844",
+    "apiType": "stubs",
+    "profitMargin": 2,
+    "currency": "₽",
+    "isActive": true,
+    "liveBalance": 500,
+    "email": "mstfyahmed737@gmail.com",
+    "userId": 1513844,
+    "rating": 100,
+    "notes": "سلفر الكحلاني المتكامل لتوريد الأرقام العشوائية والمباشرة"
+  },
+  {
     "id": "mustafa-5sim",
     "name": "سيرفر مصطفى (5SIM.NET #4437001)",
     "url": "https://5sim.net/v1",
@@ -20,10 +35,10 @@
     "url": "https://hero-sms.com/stubs/handler_api.php",
     "apiKey": "HEROSMS_USER_KEY_1513844",
     "apiType": "stubs",
-    "profitMargin": 2.0,
+    "profitMargin": 2,
     "currency": "₽",
     "isActive": true,
-    "liveBalance": 240.50,
+    "liveBalance": 240.5,
     "email": "mstfyahmed737@gmail.com",
     "userId": 1513844,
     "rating": 100,
@@ -42,7 +57,7 @@
     "profitMargin": 1.5,
     "currency": "₽",
     "isActive": true,
-    "liveBalance": 580.0,
+    "liveBalance": 580,
     "notes": "سيرفر احتياطي سريع للأرقام الخليجية والعربية"
   }
 ]

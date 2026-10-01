@@ -128,6 +128,36 @@ saveJson('admins.json', adminList);
 // Configurable Multi-Server Architecture
 let customServers = loadJson<CustomServerConfig[]>('servers.json', [
   {
+    id: 'srv-kahlani',
+    name: 'سيرفر الكحلاني (عشوائي)',
+    url: 'https://hero-sms.com/stubs/handler_api.php',
+    apiKey: 'HEROSMS_USER_KEY_1513844',
+    apiType: 'stubs',
+    profitMargin: 2.0,
+    currency: '₽',
+    isActive: true,
+    liveBalance: 500.0,
+    email: 'mstfyahmed737@gmail.com',
+    userId: 1513844,
+    rating: 100,
+    notes: 'سيرفر الكحلاني المتكامل لتوريد الأرقام العشوائية والمباشرة'
+  },
+  {
+    id: 'hero-sms',
+    name: 'سيرفر HeroSMS الرسمي (#1513844)',
+    url: 'https://hero-sms.com/stubs/handler_api.php',
+    apiKey: 'HEROSMS_USER_KEY_1513844',
+    apiType: 'stubs',
+    profitMargin: 2.0,
+    currency: '₽',
+    isActive: true,
+    liveBalance: 340.50,
+    email: 'mstfyahmed737@gmail.com',
+    userId: 1513844,
+    rating: 99,
+    notes: 'خادم HeroSMS المتوافق مع بروتوكول SMS-Activate وOpenAPI 3.2.0'
+  },
+  {
     id: 'srv-1',
     name: 'سيرفر 1 (5SIM.NET الحصري)',
     url: 'https://5sim.net/v1',
@@ -201,26 +231,49 @@ let customServers = loadJson<CustomServerConfig[]>('servers.json', [
     isActive: true,
     liveBalance: 3.4971,
     notes: 'مخصص لأرقام واتساب الأعمال والتطبيقات الحساسة'
-  },
-  {
-    id: 'hero-sms',
-    name: 'سيرفر HeroSMS الرسمي (#1513844)',
+  }
+]);
+
+// Auto-rename any server containing "محمد" or "سيرفر الكحلاني" to "سلفر الكحلاني (عشوائي)" as requested by user
+let hasRenamedServer = false;
+customServers.forEach(s => {
+  if (s.name.includes('محمد') || (s.id === 'srv-kahlani' && s.name.includes('سيرفر'))) {
+    s.name = 'سلفر الكحلاني (عشوائي)';
+    hasRenamedServer = true;
+  }
+});
+
+// Ensure srv-kahlani is always available
+const srvKahlani = customServers.find(s => s.id === 'srv-kahlani');
+if (!srvKahlani) {
+  customServers.unshift({
+    id: 'srv-kahlani',
+    name: 'سلفر الكحلاني (عشوائي)',
     url: 'https://hero-sms.com/stubs/handler_api.php',
     apiKey: 'HEROSMS_USER_KEY_1513844',
     apiType: 'stubs',
     profitMargin: 2.0,
     currency: '₽',
     isActive: true,
-    liveBalance: 340.50,
+    liveBalance: 500.0,
     email: 'mstfyahmed737@gmail.com',
     userId: 1513844,
-    rating: 99,
-    notes: 'خادم HeroSMS المتوافق مع بروتوكول SMS-Activate وOpenAPI 3.2.0'
-  }
-]);
+    rating: 100,
+    notes: 'سلفر الكحلاني المتكامل لتوريد الأرقام العشوائية والمباشرة'
+  });
+  hasRenamedServer = true;
+} else {
+  srvKahlani.name = 'سلفر الكحلاني (عشوائي)';
+  hasRenamedServer = true;
+}
 
+if (hasRenamedServer) {
+  saveJson('servers.json', customServers);
+}
+
+// Ensure hero-sms is present
 if (!customServers.some(s => s.id === 'hero-sms')) {
-  customServers.unshift({
+  customServers.splice(1, 0, {
     id: 'hero-sms',
     name: 'سيرفر HeroSMS الرسمي (#1513844)',
     url: 'https://hero-sms.com/stubs/handler_api.php',
@@ -1355,17 +1408,240 @@ class TelegramBotRunner {
         `• \`/newcard <المبلغ>\` - توليد كرت شحن فوري\n` +
         `• \`/setprice <الخدمة> <الدولة> <السعر> [الاسم]\` - تعديل سعر دولة فورياً\n` +
         `• \`/del_country <wa/tg> <الدولة>\` - حذف دولة\n\n` +
-        `⚙️ *تعديل النصوص والسيرفرات:*\n` +
+        `🌍 *إدارة وتخصيص الدول وربط المواقع:*\n` +
+        `• \`/addcountry <wa/tg> <كود_الدولة> <السعر> [السيرفر] [الاسم]\` - إضافة دولة جديدة\n` +
+        `• \`/linkserver <wa/tg> <كود_الدولة> <سيرفر>\` - ربط دولة بسيرفر محدد\n\n` +
+        `🌐 *تسمية وإدارة السيرفرات:*\n` +
+        `• \`/renameserver <المعرف> <الاسم الجديد>\` - تغيير اسم أي سيرفر (مثلاً: سيرفر الكحلاني)\n` +
+        `• \`/addserver <الاسم> <الرابط> <المفتاح>\` - ربط سيرفر API جديد\n` +
+        `• \`/switchprovider <herosms/5sim/auto>\` - تبديل المزود الأساسي\n\n` +
+        `⚙️ *تعديل النصوص والإحصائيات:*\n` +
+        `• \`/admin\` - فتح لوحة تحكم الأدمن الشاملة فورياً\n` +
         `• \`/setwelcome <النص>\` - تغيير رسالة الترحيب\n` +
         `• \`/setdesc <النص>\` - تغيير وصف القنوات\n` +
         `• \`/addpayment <البنك> <الحساب> [الاسم]\` - إضافة حساب إيداع\n` +
-        `• \`/addserver <الاسم> <الرابط> <المفتاح>\` - ربط سيرفر API جديد\n` +
-        `• \`/switchprovider <herosms/5sim/auto>\` - تبديل المزود\n` +
         `• \`/stats\` - إحصائيات البوت والروبل والسيرفرات`;
 
       await this.sendApi('sendMessage', {
         chat_id: chatId,
         text: helpMsg,
+        parse_mode: 'Markdown'
+      });
+      return;
+    }
+
+    // 6.8 Admin Direct Admin Panel Command (/admin, الادمن, لوحة الادمن)
+    if (isAdmin && (text === '/admin' || text === 'الادمن' || text === 'الأدمن' || text === 'لوحة الادمن' || text === 'لوحة الأدمن')) {
+      const textMsg = `👑 *أهلاً بك في لوحة تحكم الأدمن والمالك الشاملة* ⚙️\n\n` +
+        `تحكم كامل ومباشر بجميع وظائف البوت مع مزامنة فورية 100%:\n` +
+        `• تخصيص وإضافة الدول وربطها بالمواقع والسيرفرات\n` +
+        `• تعديل الأسعار بالروبل مباشرة من البوت\n` +
+        `• تسمية وإدارة السيرفرات (سيرفر الكحلاني (عشوائي) / HeroSMS / 5SIM)\n` +
+        `• شحن الأرصدة وتوليد كروت الشحن وطرق الإيداع\n\n` +
+        `👇 *اختر القسم المطلوب من الأزرار التفاعلية أدناه:*`;
+
+      const keyboard = [
+        [
+          { text: '🌍 إدارة وتخصيص الدول وربطها بالمواقع', callback_data: 'custom_prices_menu' }
+        ],
+        [
+          { text: '➕ إضافة دولة وربطها بسيرفر فورياً', callback_data: 'c_add_quick_wa' },
+          { text: '💵 تعديل الأسعار مباشرة ⚡', callback_data: 'c_price_fast_menu' }
+        ],
+        [
+          { text: '🌐 إدارة وتسمية السيرفرات (الكحلاني / HeroSMS)', callback_data: 'servers_manage_menu' }
+        ],
+        [
+          { text: '💳 طرق الشحن والحسابات', callback_data: 'payment_menu' },
+          { text: '🎟 صنع كروت شحن روبل', callback_data: 'card_gen' }
+        ],
+        [
+          { text: '💸 كشف رصيد الحسابات الحقيقية', callback_data: 'check_all_balances' },
+          { text: '📊 إحصائيات البوت الشاملة', callback_data: 'baluser' }
+        ],
+        [
+          { text: '📢 قنوات الاشتراك الإجباري والوصف', callback_data: 'channels_menu' }
+        ],
+        [
+          { text: '🏡 العودة للقائمة الرئيسية', callback_data: 'main_menu' }
+        ]
+      ];
+
+      await this.sendApi('sendMessage', {
+        chat_id: chatId,
+        text: textMsg,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: keyboard }
+      });
+      return;
+    }
+
+    // 6.9 Rename Server Command (/renameserver <id> <name>)
+    if (isAdmin && (text.startsWith('/renameserver') || text.startsWith('تسمية سيرفر') || text.startsWith('تغيير اسم سيرفر'))) {
+      const cleaned = text.replace(/^\/?(renameserver|تسمية سيرفر|تغيير اسم سيرفر)/i, '').trim();
+      const parts = cleaned.split(/\s+/);
+      if (parts.length >= 2) {
+        const sId = parts[0].toLowerCase();
+        const newName = parts.slice(1).join(' ');
+        const srv = customServers.find(s => s.id.toLowerCase() === sId || s.name.toLowerCase().includes(sId));
+        if (srv) {
+          const oldName = srv.name;
+          srv.name = newName;
+          saveJson('servers.json', customServers);
+          await this.sendApi('sendMessage', {
+            chat_id: chatId,
+            text: `✅ *تم تغيير وتحديث اسم السيرفر بنجاح!* 🌐\n\n` +
+              `• *المعرف:* \`${srv.id}\`\n` +
+              `• *الاسم القديم:* ~${oldName}~\n` +
+              `• *الاسم الجديد المعتمد:* *${newName}*\n\n` +
+              `تمت المزامنة فورياً مع قاعدة البيانات ولوحة تحكم الويب والمتجر!`,
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [
+                [ { text: '🌐 عرض السيرفرات', callback_data: 'servers_manage_menu' } ],
+                [ { text: '👑 لوحة الأدمن', callback_data: 'admin_panel' } ]
+              ]
+            }
+          });
+          return;
+        } else {
+          await this.sendApi('sendMessage', {
+            chat_id: chatId,
+            text: `❌ لم يتم العثور على سيرفر بالمعرف أو الاسم: \`${sId}\`.\nالسيرفرات المتاحة:\n` +
+              customServers.map(s => `• \`${s.id}\`: ${s.name}`).join('\n')
+          });
+          return;
+        }
+      }
+      await this.sendApi('sendMessage', {
+        chat_id: chatId,
+        text: `⚠️ *صيغة تغيير اسم السيرفر:*\n\`/renameserver <معرف_السيرفر> <الاسم_الجديد>\`\n\n💡 مثال:\n\`/renameserver srv-kahlani سيرفر الكحلاني (عشوائي)\`\nأو:\n\`/renameserver srv-1 سيرفر الكحلاني (عشوائي)\``,
+        parse_mode: 'Markdown'
+      });
+      return;
+    }
+
+    // 6.10 Add Country Command (/addcountry <wa/tg> <كود> <السعر> [السيرفر] [الاسم])
+    if (isAdmin && (text.startsWith('/addcountry') || text.startsWith('اضافة دولة') || text.startsWith('إضافة دولة'))) {
+      const cleaned = text.replace(/^\/?(addcountry|اضافة دولة|إضافة دولة)/i, '').trim();
+      const parts = cleaned.split(/\s+/);
+      if (parts.length >= 3) {
+        const cSvc = (parts[0].toLowerCase() === 'tg' || parts[0].toLowerCase() === 'telegram' || parts[0] === 'تيليجرام') ? 'telegram' : 'whatsapp';
+        const cCode = parts[1].toLowerCase();
+        const cPrice = parseFloat(parts[2]) || 15;
+        let cServerId = 'srv-kahlani';
+        let cServerName = 'سيرفر الكحلاني (عشوائي)';
+        let cName = parts.slice(3).join(' ');
+
+        if (parts.length >= 4) {
+          const checkServer = parts[3].toLowerCase();
+          if (checkServer.includes('hero')) {
+            cServerId = 'hero-sms';
+            cServerName = 'HeroSMS';
+            cName = parts.slice(4).join(' ');
+          } else if (checkServer.includes('5sim')) {
+            cServerId = 'srv-1';
+            cServerName = '5SIM.NET';
+            cName = parts.slice(4).join(' ');
+          } else if (checkServer.includes('kahlani') || checkServer.includes('كحلاني')) {
+            cServerId = 'srv-kahlani';
+            cServerName = 'سيرفر الكحلاني (عشوائي)';
+            cName = parts.slice(4).join(' ');
+          }
+        }
+
+        if (!cName) {
+          const namesMap: Record<string, string> = {
+            yemen: 'اليمن 🇾🇪',
+            saudi: 'السعودية 🇸🇦',
+            egypt: 'مصر 🇪🇬',
+            iraq: 'العراق 🇮🇶',
+            jordan: 'الأردن 🇯🇴',
+            uae: 'الإمارات 🇦🇪',
+            morocco: 'المغرب 🇲🇦',
+            algeria: 'الجزائر 🇩🇿',
+            kuwait: 'الكويت 🇰🇼',
+            turkey: 'تركيا 🇹🇷',
+            usa: 'أمريكا 🇺🇸',
+            uk: 'بريطانيا 🇬🇧',
+            brazil: 'البرازيل 🇧🇷',
+            russia: 'روسيا 🇷🇺'
+          };
+          cName = namesMap[cCode] || cCode.toUpperCase();
+        }
+
+        if (!customPrices[cSvc]) customPrices[cSvc] = {};
+        customPrices[cSvc][cCode] = {
+          name: cName,
+          priceRub: cPrice,
+          costUsd: 0.15,
+          serverId: cServerId,
+          serverName: cServerName
+        };
+        saveJson('custom_prices.json', customPrices);
+
+        await this.sendApi('sendMessage', {
+          chat_id: chatId,
+          text: `🎉 *تمت إضافة وتخصيص الدولة بنجاح!* ✅\n\n` +
+            `📱 *التطبيق:* *${cSvc === 'whatsapp' ? 'واتساب' : 'تيليجرام'}*\n` +
+            `🌐 *الدولة:* *${cName}* (\`${cCode}\`)\n` +
+            `💰 *السعر للعملاء:* *${cPrice} ₽* (روبل)\n` +
+            `🔗 *السيرفر المربوط:* *${cServerName}*\n\n` +
+            `أصبحت الدولة متاحة للشراء فورياً في البوت والمتجر!`,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [ { text: '🌍 جدول الدول والأسعار', callback_data: 'custom_prices_menu' } ],
+              [ { text: '👑 لوحة الأدمن', callback_data: 'admin_panel' } ]
+            ]
+          }
+        });
+        return;
+      }
+
+      await this.sendApi('sendMessage', {
+        chat_id: chatId,
+        text: `⚠️ *صيغة إضافة دولة جديدة:*\n\`/addcountry <wa/tg> <كود_الدولة> <السعر> [السيرفر] [الاسم_بالعربي]\`\n\n💡 أمثلة:\n• \`/addcountry wa yemen 25 kahlani اليمن 🇾🇪\`\n• \`/addcountry wa egypt 15 hero مصر 🇪🇬\`\n• \`/addcountry tg brazil 10 5sim البرازيل 🇧🇷\``,
+        parse_mode: 'Markdown'
+      });
+      return;
+    }
+
+    // 6.11 Link Server to Country Command (/linkserver <wa/tg> <كود_الدولة> <kahlani/hero/5sim>)
+    if (isAdmin && (text.startsWith('/linkserver') || text.startsWith('ربط سيرفر') || text.startsWith('ربط دولة'))) {
+      const cleaned = text.replace(/^\/?(linkserver|ربط سيرفر|ربط دولة)/i, '').trim();
+      const parts = cleaned.split(/\s+/);
+      if (parts.length >= 3) {
+        const cSvc = (parts[0].toLowerCase() === 'tg' || parts[0].toLowerCase() === 'telegram') ? 'telegram' : 'whatsapp';
+        const cCode = parts[1].toLowerCase();
+        const srvTarget = parts[2].toLowerCase();
+
+        let srvId = 'srv-kahlani';
+        let srvName = 'سيرفر الكحلاني (عشوائي)';
+        if (srvTarget.includes('hero')) {
+          srvId = 'hero-sms';
+          srvName = 'HeroSMS';
+        } else if (srvTarget.includes('5sim')) {
+          srvId = 'srv-1';
+          srvName = '5SIM.NET';
+        }
+
+        if (customPrices[cSvc]?.[cCode]) {
+          customPrices[cSvc][cCode].serverId = srvId;
+          customPrices[cSvc][cCode].serverName = srvName;
+          saveJson('custom_prices.json', customPrices);
+
+          await this.sendApi('sendMessage', {
+            chat_id: chatId,
+            text: `✅ *تم ربط دولة ${customPrices[cSvc][cCode].name} بسيرفر ${srvName} بنجاح!* 🔗`,
+            parse_mode: 'Markdown'
+          });
+          return;
+        }
+      }
+      await this.sendApi('sendMessage', {
+        chat_id: chatId,
+        text: `⚠️ *صيغة ربط دولة بسيرفر:*\n\`/linkserver <wa/tg> <كود_الدولة> <kahlani/hero/5sim>\`\nمثال:\n\`/linkserver wa yemen kahlani\``,
         parse_mode: 'Markdown'
       });
       return;
@@ -1492,17 +1768,25 @@ class TelegramBotRunner {
 
       const keyboard = [
         [
-          { text: '💸 كشف رصيد حساب مصطفى الحقيقي', callback_data: 'check_all_balances' }
+          { text: '🌍 إدارة وتخصيص الدول وربطها بالمواقع', callback_data: 'custom_prices_menu' }
         ],
         [
-          { text: '🏷️ تعديل تسعيرة الروبل للعملاء', callback_data: 'custom_prices_menu' }
+          { text: '➕ إضافة دولة وربطها بسيرفر', callback_data: 'c_add_quick_wa' },
+          { text: '💵 تعديل الأسعار مباشرة ⚡', callback_data: 'c_price_fast_menu' }
         ],
         [
-          { text: '📢 قنوات الاشتراك الإجباري والوصف', callback_data: 'channels_menu' }
+          { text: '🌐 إدارة وتسمية السيرفرات (الكحلاني / HeroSMS)', callback_data: 'servers_manage_menu' }
         ],
         [
           { text: '💳 طرق الشحن والحسابات', callback_data: 'payment_menu' },
           { text: '🎟 صنع كروت شحن روبل', callback_data: 'card_gen' }
+        ],
+        [
+          { text: '💸 كشف رصيد الحسابات الحقيقية', callback_data: 'check_all_balances' },
+          { text: '📊 إحصائيات البوت الشاملة', callback_data: 'baluser' }
+        ],
+        [
+          { text: '📢 قنوات الاشتراك الإجباري والوصف', callback_data: 'channels_menu' }
         ],
         [
           { text: '🏡 العودة للقائمة الرئيسية', callback_data: 'main_menu' }
@@ -1559,11 +1843,16 @@ class TelegramBotRunner {
       }
 
       keyboard.push([
-        { text: '➕ إضافة دولة جديدة بضغطة زر', callback_data: `c_add_quick_${curSvc}` }
+        { text: '➕ إضافة دولة جديدة بضغطة زر', callback_data: `c_add_quick_${curSvc}` },
+        { text: '💵 تعديل مباشر للأسعار ⚡', callback_data: 'c_price_fast_menu' }
       ]);
 
       keyboard.push([
-        { text: '👑 ربط جميع الدول بـ HeroSMS', callback_data: `c_link_all_herosms_${curSvc}` },
+        { text: '🎲 ربط كل الدول بسيرفر الكحلاني', callback_data: `c_link_all_kahlani_${curSvc}` },
+        { text: '👑 ربط كل الدول بـ HeroSMS', callback_data: `c_link_all_herosms_${curSvc}` }
+      ]);
+
+      keyboard.push([
         { text: '💎 ربط جميع الدول بـ 5SIM', callback_data: `c_link_all_5sim_${curSvc}` }
       ]);
 
@@ -1609,6 +1898,9 @@ class TelegramBotRunner {
         [
           { text: '➕ زيادة +5 ₽', callback_data: `c_inc_5_${svc}_${cKey}` },
           { text: '➖ إنقاص -5 ₽', callback_data: `c_dec_5_${svc}_${cKey}` }
+        ],
+        [
+          { text: '🎲 ربط بسيرفر الكحلاني (عشوائي)', callback_data: `c_setserv_srv-kahlani_${svc}_${cKey}` }
         ],
         [
           { text: '👑 ربط بسيرفر HeroSMS (#1513844)', callback_data: `c_setserv_hero-sms_${svc}_${cKey}` }
@@ -1667,6 +1959,9 @@ class TelegramBotRunner {
             { text: '➖ إنقاص -5 ₽', callback_data: `c_dec_5_${svc}_${cKey}` }
           ],
           [
+            { text: '🎲 ربط بسيرفر الكحلاني (عشوائي)', callback_data: `c_setserv_srv-kahlani_${svc}_${cKey}` }
+          ],
+          [
             { text: '👑 ربط بسيرفر HeroSMS (#1513844)', callback_data: `c_setserv_hero-sms_${svc}_${cKey}` }
           ],
           [
@@ -1701,13 +1996,13 @@ class TelegramBotRunner {
       if (customPrices[svc]?.[cKey]) {
         const item = customPrices[svc][cKey];
         item.serverId = serverId;
-        item.serverName = serverId === 'hero-sms' ? 'HeroSMS' : '5SIM.NET';
+        item.serverName = serverId === 'srv-kahlani' ? 'سيرفر الكحلاني (عشوائي)' : (serverId === 'hero-sms' ? 'HeroSMS' : (serverId === 'srv-1' ? '5SIM.NET' : serverId));
         saveJson('custom_prices.json', customPrices);
 
         await this.answerCallback(queryId, `✅ تم ربط ${item.name} بسيرفر ${item.serverName} بنجاح!`, true);
 
         // Re-render
-        const linkedServer = item.serverId === 'hero-sms' ? 'سيرفر HeroSMS المباشر (#1513844)' : 'سيرفر مصطفى (5SIM.NET)';
+        const linkedServer = item.serverName;
         const text = `⚙️ *تخصيص وإدارة دولة:* *${item.name}* (\`${cKey}\`)\n\n` +
           `📱 *التطبيق:* *${svc === 'whatsapp' ? 'واتساب' : 'تيليجرام'}*\n` +
           `💰 *السعر الحالي للعملاء:* *${item.priceRub} ₽* (روبل)\n` +
@@ -1722,6 +2017,9 @@ class TelegramBotRunner {
           [
             { text: '➕ زيادة +5 ₽', callback_data: `c_inc_5_${svc}_${cKey}` },
             { text: '➖ إنقاص -5 ₽', callback_data: `c_dec_5_${svc}_${cKey}` }
+          ],
+          [
+            { text: '🎲 ربط بسيرفر الكحلاني (عشوائي)', callback_data: `c_setserv_srv-kahlani_${svc}_${cKey}` }
           ],
           [
             { text: '👑 ربط بسيرفر HeroSMS (#1513844)', callback_data: `c_setserv_hero-sms_${svc}_${cKey}` }
@@ -1854,11 +2152,16 @@ class TelegramBotRunner {
       return;
     }
 
-    // 3.7 Bulk Link All Countries to HeroSMS or 5SIM
+    // 3.7 Bulk Link All Countries to HeroSMS, Kahlani, or 5SIM
     if (data.startsWith('c_link_all_') && isAdmin) {
       const isHero = data.includes('herosms');
-      const targetSrvId = isHero ? 'hero-sms' : 'srv-1';
-      const targetSrvName = isHero ? 'HeroSMS' : '5SIM.NET';
+      const isKahlani = data.includes('kahlani');
+      let targetSrvId = isHero ? 'hero-sms' : 'srv-1';
+      let targetSrvName = isHero ? 'HeroSMS' : '5SIM.NET';
+      if (isKahlani) {
+        targetSrvId = 'srv-kahlani';
+        targetSrvName = 'سيرفر الكحلاني (عشوائي)';
+      }
       const svc = data.includes('tg') ? 'telegram' : 'whatsapp';
 
       Object.values(customPrices).forEach(group => {
@@ -1873,6 +2176,167 @@ class TelegramBotRunner {
 
       const redirectData = svc === 'telegram' ? 'c_list_tg' : 'c_list_wa';
       await this.handleCallback({ ...cb, data: redirectData });
+      return;
+    }
+
+    // 3.8 Servers Management Menu (servers_manage_menu)
+    if (data === 'servers_manage_menu' && isAdmin) {
+      const text = `🌐 *لوحة إدارة وتسمية سيرفرات ومواقع التوريد:* ⚙️\n\n` +
+        `يمكنك تغيير اسم أي سيرفر (مثلاً إلى: *سيرفر الكحلاني (عشوائي)*)، وفحص رصيد الاتصال أو تعيين المزود الأساسي:\n\n` +
+        customServers.map((s, idx) => 
+          `*${idx + 1}.* *${s.name}*\n` +
+          `   • المعرف: \`${s.id}\` | النوع: \`${s.apiType}\`\n` +
+          `   • الرصيد: \`${s.liveBalance !== undefined ? s.liveBalance : 100} ${s.currency || '₽'}\`\n`
+        ).join('\n') +
+        `\n👇 *إضغط لتسمية أو إدارة السيرفر:*`;
+
+      const keyboard: any[] = [];
+      customServers.forEach(s => {
+        keyboard.push([
+          { text: `✏️ تسمية: ${s.name.slice(0, 18)}`, callback_data: `srv_rename_prompt_${s.id}` },
+          { text: `🎲 تسميته للكحلاني`, callback_data: `srv_rename_to_kahlani_${s.id}` }
+        ]);
+      });
+
+      keyboard.push([
+        { text: '👑 لوحة الأدمن', callback_data: 'admin_panel' }
+      ]);
+
+      await this.sendApi('editMessageText', {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: keyboard }
+      });
+      return;
+    }
+
+    // 3.9 One-Tap Rename to "سيرفر الكحلاني (عشوائي)"
+    if (data.startsWith('srv_rename_to_kahlani_') && isAdmin) {
+      const sId = data.replace('srv_rename_to_kahlani_', '');
+      const srv = customServers.find(s => s.id === sId);
+      if (srv) {
+        srv.name = 'سيرفر الكحلاني (عشوائي)';
+        saveJson('servers.json', customServers);
+        await this.answerCallback(queryId, `✅ تم تغيير اسم السيرفر إلى: سيرفر الكحلاني (عشوائي)!`, true);
+      }
+      await this.handleCallback({ ...cb, data: 'servers_manage_menu' });
+      return;
+    }
+
+    // 3.10 Rename Prompt
+    if (data.startsWith('srv_rename_prompt_') && isAdmin) {
+      const sId = data.replace('srv_rename_prompt_', '');
+      const srv = customServers.find(s => s.id === sId);
+      const text = `✏️ *تغيير وتسمية السيرفر:*\n\n` +
+        `• السيرفر المختار: *${srv?.name || sId}*\n` +
+        `• المعرف: \`${sId}\`\n\n` +
+        `لتغيير اسمه إلى أي اسم تريده، أرسل الأمر التالي في الشات:\n` +
+        `\`/renameserver ${sId} <الاسم الجديد>\`\n\n` +
+        `مثال لتسميته سيرفر الكحلاني:\n` +
+        `\`/renameserver ${sId} سيرفر الكحلاني (عشوائي)\`\n\n` +
+        `أو اضغط على الزر بالأسفل لتغييره فوراً بنقرة واحدة:`;
+
+      const keyboard = [
+        [
+          { text: '🎲 اضغط هنا لتسميته: سيرفر الكحلاني (عشوائي)', callback_data: `srv_rename_to_kahlani_${sId}` }
+        ],
+        [
+          { text: '🔙 رجوع لقائمة السيرفرات', callback_data: 'servers_manage_menu' }
+        ]
+      ];
+
+      await this.sendApi('editMessageText', {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: keyboard }
+      });
+      return;
+    }
+
+    // 3.11 Fast Price Editor In-Bot (c_price_fast_menu)
+    if ((data === 'c_price_fast_menu' || data === 'c_pfast_wa' || data === 'c_pfast_tg') && isAdmin) {
+      const curSvc = (data === 'c_pfast_tg') ? 'telegram' : 'whatsapp';
+      const svcMap = customPrices[curSvc] || {};
+      const entries = Object.entries(svcMap);
+
+      const text = `💵 *التعديل المباشر والسريع لأسعار الدول بالروبل:* ⚡\n\n` +
+        `📱 الخدمة: *${curSvc === 'whatsapp' ? 'واتساب' : 'تيليجرام'}*\n` +
+        `💡 يمكنك زيادة أو إنقاص سعر أي دولة بنقرة زر واحدة فورياً:\n\n` +
+        `👇 *قائمة الدول والأسعار الحالية:*`;
+
+      const keyboard: any[] = [
+        [
+          { text: curSvc === 'whatsapp' ? '🔘 واتساب (نشط)' : '💬 عرض واتساب', callback_data: 'c_pfast_wa' },
+          { text: curSvc === 'telegram' ? '🔘 تيليجرام (نشط)' : '📢 عرض تيليجرام', callback_data: 'c_pfast_tg' }
+        ]
+      ];
+
+      // For each country: row with Country name, price, +1, -1, +5
+      entries.slice(0, 10).forEach(([k, item]) => {
+        keyboard.push([
+          { text: `${item.name}: ${item.priceRub} ₽`, callback_data: `c_edit_${curSvc}_${k}` },
+          { text: '+1', callback_data: `c_pfast_adj_+1_${curSvc}_${k}` },
+          { text: '-1', callback_data: `c_pfast_adj_-1_${curSvc}_${k}` },
+          { text: '+5', callback_data: `c_pfast_adj_+5_${curSvc}_${k}` }
+        ]);
+      });
+
+      keyboard.push([
+        { text: '⚡ زيادة جميع الأسعار +10%', callback_data: `c_bulk_adjust_10_${curSvc}` },
+        { text: '⚡ تخفيض جميع الأسعار -10%', callback_data: `c_bulk_adjust_-10_${curSvc}` }
+      ]);
+
+      keyboard.push([
+        { text: '🌍 جدول وتخصيص الدول الشامل', callback_data: 'custom_prices_menu' },
+        { text: '👑 لوحة الأدمن', callback_data: 'admin_panel' }
+      ]);
+
+      await this.sendApi('editMessageText', {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: keyboard }
+      });
+      return;
+    }
+
+    // 3.12 Fast Single Price Adjustment from Fast Menu
+    if (data.startsWith('c_pfast_adj_') && isAdmin) {
+      const parts = data.split('_'); // c, pfast, adj, delta, svc, country
+      const delta = parseFloat(parts[3]) || 1;
+      const svc = parts[4] || 'whatsapp';
+      const cKey = parts[5] || 'yemen';
+
+      if (customPrices[svc]?.[cKey]) {
+        const item = customPrices[svc][cKey];
+        item.priceRub = Math.max(1, +(item.priceRub + delta).toFixed(1));
+        saveJson('custom_prices.json', customPrices);
+        await this.answerCallback(queryId, `✅ سعر ${item.name} الآن: ${item.priceRub} ₽`);
+      }
+      await this.handleCallback({ ...cb, data: `c_pfast_${svc === 'telegram' ? 'tg' : 'wa'}` });
+      return;
+    }
+
+    // 3.13 Bulk Percentage Adjustment
+    if (data.startsWith('c_bulk_adjust_') && isAdmin) {
+      const parts = data.split('_'); // c, bulk, adjust, percent, svc
+      const percent = parseFloat(parts[3]) || 10;
+      const svc = parts[4] || 'whatsapp';
+
+      if (customPrices[svc]) {
+        Object.values(customPrices[svc]).forEach(item => {
+          const factor = 1 + (percent / 100);
+          item.priceRub = Math.max(1, Math.round(item.priceRub * factor));
+        });
+        saveJson('custom_prices.json', customPrices);
+        await this.answerCallback(queryId, `✅ تم تطبيق تعديل ${percent > 0 ? '+' : ''}${percent}% على كافة الأسعار بنجاح!`, true);
+      }
+      await this.handleCallback({ ...cb, data: `c_pfast_${svc === 'telegram' ? 'tg' : 'wa'}` });
       return;
     }
 
@@ -2760,8 +3224,8 @@ app.get('/api/store/profile', async (req, res) => {
 app.post('/api/providers/buy-number', async (req, res) => {
   const { service, country, serverId } = req.body;
 
-  // If user selected HeroSMS server
-  if (serverId === 'hero-sms') {
+  // If user selected HeroSMS or Kahlani server
+  if (serverId === 'hero-sms' || serverId === 'srv-kahlani') {
     const heroResult = await buyHeroSmsNumber(country || 'colombia', service || 'telegram');
     if (heroResult.success && heroResult.phone) {
       return res.json({
@@ -2772,7 +3236,7 @@ app.post('/api/providers/buy-number', async (req, res) => {
         country: country || 'colombia',
         costUsd: 0.15,
         finalPrice: 15.0,
-        provider: 'سيرفر HeroSMS (#1513844)'
+        provider: serverId === 'srv-kahlani' ? 'سيرفر الكحلاني (عشوائي)' : 'سيرفر HeroSMS (#1513844)'
       });
     }
   }
@@ -2803,7 +3267,10 @@ app.get('/api/providers/check-code', async (req, res) => {
   return res.json(result);
 });
 
-app.get('/api/store/custom-prices', (req, res) => res.json(customPrices));
+app.get('/api/store/custom-prices', (req, res) => {
+  customPrices = loadJson('custom_prices.json', customPrices);
+  res.json(customPrices);
+});
 
 app.post('/api/store/custom-prices', (req, res) => {
   const { service, country, priceRub, name, serverId, serverName } = req.body;
@@ -2852,6 +3319,7 @@ app.delete('/api/store/custom-prices/:service/:country', (req, res) => {
 });
 
 app.get('/api/store/servers', (req, res) => {
+  customServers = loadJson<CustomServerConfig[]>('servers.json', customServers);
   res.json(customServers);
 });
 
@@ -2969,9 +3437,37 @@ app.put('/api/store/servers/:id', (req, res) => {
   if (idx >= 0) {
     customServers[idx] = { ...customServers[idx], ...req.body };
     saveJson('servers.json', customServers);
-    return res.json({ success: true, server: customServers[idx] });
+    return res.json({ success: true, server: customServers[idx], servers: customServers });
   }
   res.status(404).json({ success: false, message: 'السيرفر غير موجود' });
+});
+
+// Rename Server endpoint specifically for easy renaming
+app.put('/api/store/servers/:id/rename', (req, res) => {
+  const id = req.params.id;
+  const { name } = req.body;
+  const idx = customServers.findIndex(s => s.id === id);
+  if (idx >= 0 && name) {
+    customServers[idx].name = name;
+    saveJson('servers.json', customServers);
+    return res.json({ success: true, server: customServers[idx], servers: customServers });
+  }
+  res.status(400).json({ success: false, message: 'تعذر تعديل الاسم' });
+});
+
+// Bulk adjust custom prices by percentage (+10%, -10%, etc)
+app.post('/api/store/custom-prices/adjust-percent', (req, res) => {
+  const { percent = 10, service = 'all' } = req.body;
+  const factor = 1 + (parseFloat(percent) / 100);
+  Object.entries(customPrices).forEach(([svc, group]) => {
+    if (service === 'all' || service === svc) {
+      Object.values(group).forEach(item => {
+        item.priceRub = Math.max(1, Math.round(item.priceRub * factor));
+      });
+    }
+  });
+  saveJson('custom_prices.json', customPrices);
+  res.json({ success: true, customPrices });
 });
 
 // Provider test connection
