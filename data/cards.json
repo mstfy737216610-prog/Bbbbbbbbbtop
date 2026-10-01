@@ -1,0 +1,26 @@
+[
+  {
+    "id": "card-1",
+    "code": "CARD-50RUB-VIP8338-9910",
+    "amount": 50,
+    "createdBy": "Admin",
+    "isUsed": false,
+    "createdAt": "2026-10-01T12:00:00.000Z"
+  },
+  {
+    "id": "card-2",
+    "code": "CARD-100RUB-VIP7711-2244",
+    "amount": 100,
+    "createdBy": "Admin",
+    "isUsed": false,
+    "createdAt": "2026-10-01T12:00:00.000Z"
+  },
+  {
+    "id": "card-3",
+    "code": "CARD-25RUB-PRO4412-8831",
+    "amount": 25,
+    "createdBy": "Admin",
+    "isUsed": false,
+    "createdAt": "2026-10-01T12:00:00.000Z"
+  }
+]

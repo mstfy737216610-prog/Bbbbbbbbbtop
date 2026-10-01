@@ -1,0 +1,20 @@
+{
+  "8338869162": {
+    "id": "8338869162",
+    "name": "مصطفى (المهندس المالك)",
+    "username": "Engku8",
+    "balance": 500.0,
+    "totalPurchased": 12,
+    "referrals": 8,
+    "joinedAt": "2026-09-01T10:00:00.000Z"
+  },
+  "7607633343": {
+    "id": "7607633343",
+    "name": "مدير النظام",
+    "username": "AdminPro",
+    "balance": 250.0,
+    "totalPurchased": 6,
+    "referrals": 3,
+    "joinedAt": "2026-09-10T12:00:00.000Z"
+  }
+}

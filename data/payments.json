@@ -1,0 +1,52 @@
+[
+  {
+    "id": "kuraimi",
+    "name": "Al-Kuraimi Bank",
+    "arabicName": "بنك الكريمي (حساب / جوال)",
+    "accountNumber": "3049582109",
+    "accountHolder": "مكتب الإبداع - مورد الأرقام",
+    "instructions": "التحويل عبر تطبيق كريمي جوال أو إم فلوس ثم إرسال السند لإدارة البوت.",
+    "icon": "CreditCard",
+    "isActive": true
+  },
+  {
+    "id": "najm",
+    "name": "Al-Najm Express",
+    "arabicName": "النجم للصرافة والتحويلات",
+    "accountNumber": "محمد علي سالم - اليمن",
+    "accountHolder": "محمد علي سالم",
+    "instructions": "إرسال الحوالة باسم المستفيد وإرسال رقم الحوالة للأدمن.",
+    "icon": "Send",
+    "isActive": true
+  },
+  {
+    "id": "binance-usdt",
+    "name": "Binance Pay / USDT",
+    "arabicName": "بينانس وبايير USDT (دولار رقمي)",
+    "accountNumber": "Pay ID: 394850211",
+    "accountHolder": "Crypto Supplier Hub",
+    "instructions": "شحن فوري بالدولار الرقمي USDT عبر باينانس باي.",
+    "icon": "DollarSign",
+    "isActive": true
+  },
+  {
+    "id": "stc-pay",
+    "name": "STC Pay & Al-Rajhi",
+    "arabicName": "STC Pay والراجحي (السعودية)",
+    "accountNumber": "+966500000000",
+    "accountHolder": "سداد فوري للمملكة",
+    "instructions": "التحويل عبر المحفظة أو الحساب وإرسال الإشعار.",
+    "icon": "Smartphone",
+    "isActive": true
+  },
+  {
+    "id": "asia-zain",
+    "name": "AsiaCell & Zain Cash",
+    "arabicName": "آسياسيل وزين كاش (العراق)",
+    "accountNumber": "07700000000",
+    "accountHolder": "وكيل العراق المعتمد",
+    "instructions": "تحويل رصيد أو محفظة ثم إشعار الدعم فورياً.",
+    "icon": "Radio",
+    "isActive": true
+  }
+]

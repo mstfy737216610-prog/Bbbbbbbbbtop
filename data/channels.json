@@ -1,0 +1,20 @@
+[
+  {
+    "id": "ch-1",
+    "title": "قناة البوت الرسمية",
+    "username": "@sms_com_bot",
+    "url": "https://t.me/sms_com_bot",
+    "description": "قناة الإعلانات والتحديثات الرسمية",
+    "isMandatory": true,
+    "createdAt": "2026-10-01T12:00:00.000Z"
+  },
+  {
+    "id": "ch-2",
+    "title": "قناة التفعيلات المباشرة",
+    "username": "@pilotoooo",
+    "url": "https://t.me/pilotoooo",
+    "description": "إشعارات الأرقام المكتملة والتفعيلات الحية",
+    "isMandatory": true,
+    "createdAt": "2026-10-01T12:00:00.000Z"
+  }
+]
