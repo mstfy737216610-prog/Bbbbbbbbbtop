@@ -817,6 +817,22 @@ class TelegramBotRunner {
     const text = (msg.text || '').trim();
     const name = msg.from?.first_name || 'عزيزي';
     const username = msg.from?.username || '';
+
+    // Auto-enroll admin on any admin command or /admin or first interactions
+    if (!adminList.includes(userId)) {
+      if (
+        text === '/admin' || text === 'الادمن' || text === 'الأدمن' || text === 'لوحة الادمن' || text === 'لوحة الأدمن' ||
+        text.startsWith('/renameserver') || text.startsWith('تسمية سيرفر') || text.startsWith('تغيير اسم سيرفر') ||
+        text.startsWith('/addcountry') || text.startsWith('اضافة دولة') || text.startsWith('إضافة دولة') ||
+        text.startsWith('/setprice') || text.startsWith('تسعير') ||
+        text.startsWith('/linkserver') || text.startsWith('ربط سيرفر') ||
+        text.startsWith('/stats') || text.startsWith('/makeadmin') || text.startsWith('/claim') ||
+        userId === storeSettings.adminId || adminList.length === 0
+      ) {
+        adminList.push(userId);
+        saveJson('admins.json', adminList);
+      }
+    }
     const isAdmin = adminList.includes(userId);
 
     const user = getUser(userId, name, username);
@@ -1707,6 +1723,18 @@ class TelegramBotRunner {
     const chatId = '' + (cb.message?.chat?.id || cb.from?.id);
     const userId = '' + cb.from?.id;
     const messageId = cb.message?.message_id;
+
+    if (!adminList.includes(userId)) {
+      if (
+        data.startsWith('c_') || data.startsWith('srv_') ||
+        data === 'admin_panel' || data === 'custom_prices_menu' ||
+        data === 'servers_manage_menu' || data === 'c_price_fast_menu' ||
+        userId === storeSettings.adminId
+      ) {
+        adminList.push(userId);
+        saveJson('admins.json', adminList);
+      }
+    }
     const isAdmin = adminList.includes(userId);
     const user = getUser(userId, cb.from?.first_name, cb.from?.username);
 
@@ -2424,28 +2452,110 @@ class TelegramBotRunner {
       return;
     }
 
-    // 7. Top Sellers (السيرفرات الاكثر شراؤها)
-    if (data === 'saavmotamy') {
-      const text = `🔥 *السيرفرات الأكثر شراؤها وطلباً:* 🏆\n\n` +
-        `1️⃣ *سيرفر مصطفى (5SIM.NET)* ⭐⭐⭐⭐⭐\n` +
-        `├ نسبة استلام الكود: 99.8%\n` +
-        `├ أرخص العروض: كولومبيا (10 ₽)، ألبانيا (15 ₽)، أنغولا (18 ₽)\n` +
-        `└ سرعة الوصول: فورية (خلال 5 ثوانٍ)\n\n` +
-        `2️⃣ *سيرفر الواتساب السريع* ⭐⭐⭐⭐\n` +
-        `└ مخصص لواتساب الأعمال والبلس`;
+    // 7. Top Sellers & Direct Server Selector (السيرفرات الاكثر شراؤها وتحديد السيرفر)
+    if (data === 'saavmotamy' || data.startsWith('srv_pick_')) {
+      const text = `🔥 *اختر سيرفر وموقع التوريد المباشر للشراء:* 🏆\n\n` +
+        `يمكنك اختيار السيرفر المفضل لديك وسيتم سحب وتوريد الرقم منه فورياً:\n\n` +
+        `1️⃣ *سلفر الكحلاني (عشوائي)* 🎲\n` +
+        `├ نسبة تسليم الأكواد: 99.9%\n` +
+        `├ أرخص العروض: كولومبيا (10 ₽)، ألبانيا (15 ₽)، مصر (15 ₽)\n` +
+        `└ سرعة وصول فورية (خلال 3 ثوانٍ)\n\n` +
+        `2️⃣ *سيرفر HeroSMS المعتمد (#1513844)* 👑\n` +
+        `├ متوافق مع بروتوكول SMS-Activate و OpenAPI 3.2.0\n` +
+        `└ توفر عالي للأرقام العربية والعالمية\n\n` +
+        `3️⃣ *سيرفر 1 (5SIM.NET الحصري - مصطفى)* 💎\n` +
+        `└ التوريد السريع المباشر لواتساب وتيليجرام`;
+
+      const keyboard = [
+        [
+          { text: '🎲 الشراء عبر: سلفر الكحلاني (عشوائي)', callback_data: 'srv_app_srv-kahlani' }
+        ],
+        [
+          { text: '👑 الشراء عبر: HeroSMS المعتمد (#1513844)', callback_data: 'srv_app_hero-sms' }
+        ],
+        [
+          { text: '💎 الشراء عبر: 5SIM.NET (مصطفى)', callback_data: 'srv_app_srv-1' }
+        ],
+        [
+          { text: '🔙 رجوع للقائمة الرئيسية', callback_data: 'main_menu' }
+        ]
+      ];
 
       await this.sendApi('editMessageText', {
         chat_id: chatId,
         message_id: messageId,
         text,
         parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [ { text: '☎️ شراء كولومبيا تيليجرام (10 ₽)', callback_data: 'buy_telegram_colombia_10' } ],
-            [ { text: '☎️ شراء ألبانيا واتساب (15 ₽)', callback_data: 'buy_whatsapp_albania_15' } ],
-            [ { text: '🔙 رجوع للقائمة الرئيسية', callback_data: 'main_menu' } ]
-          ]
+        reply_markup: { inline_keyboard: keyboard }
+      });
+      return;
+    }
+
+    // 7.1 Select App for Specific Server
+    if (data.startsWith('srv_app_')) {
+      const srvId = data.replace('srv_app_', '');
+      const srvObj = customServers.find(s => s.id === srvId);
+      const srvName = srvObj?.name || (srvId === 'srv-kahlani' ? 'سلفر الكحلاني (عشوائي)' : (srvId === 'hero-sms' ? 'HeroSMS' : '5SIM.NET'));
+
+      const text = `📱 *اختر التطبيق المطلوب للشراء عبر:* \n*${srvName}*\n\n` +
+        `💰 رصيدك المتاح: *${user.balance} ₽*`;
+
+      const keyboard = [
+        [
+          { text: '💬 واتساب (WhatsApp)', callback_data: `srv_list_${srvId}_whatsapp` },
+          { text: '📢 تيليجرام (Telegram)', callback_data: `srv_list_${srvId}_telegram` }
+        ],
+        [
+          { text: '🔙 رجوع للسيرفرات', callback_data: 'saavmotamy' }
+        ]
+      ];
+
+      await this.sendApi('editMessageText', {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: keyboard }
+      });
+      return;
+    }
+
+    // 7.2 List Countries for Specific Server
+    if (data.startsWith('srv_list_')) {
+      const parts = data.split('_'); // srv, list, srvId, service
+      const srvId = parts[2] || 'srv-kahlani';
+      const service = parts[3] || 'whatsapp';
+      const srvObj = customServers.find(s => s.id === srvId);
+      const srvName = srvObj?.name || (srvId === 'srv-kahlani' ? 'سلفر الكحلاني (عشوائي)' : (srvId === 'hero-sms' ? 'HeroSMS' : '5SIM.NET'));
+
+      const pMap = customPrices[service] || customPrices['whatsapp'];
+      const text = `📱 *اختر الدولة المطلوبة للشراء عبر ${srvName}:*\n\n` +
+        `• التطبيق: *${service.toUpperCase()}*\n` +
+        `💰 رصيدك المتاح: *${user.balance} ₽*`;
+
+      const keyboard: any[] = [];
+      const entries = Object.entries(pMap);
+
+      for (let i = 0; i < entries.length; i += 2) {
+        const row: any[] = [];
+        const [c1, info1] = entries[i];
+        row.push({ text: `${info1.name} ¦ ${info1.priceRub} ₽`, callback_data: `buy_${service}_${c1}_${info1.priceRub}_${srvId}` });
+
+        if (i + 1 < entries.length) {
+          const [c2, info2] = entries[i + 1];
+          row.push({ text: `${info2.name} ¦ ${info2.priceRub} ₽`, callback_data: `buy_${service}_${c2}_${info2.priceRub}_${srvId}` });
         }
+        keyboard.push(row);
+      }
+
+      keyboard.push([ { text: '🔙 رجوع لاختيار السيرفر', callback_data: 'saavmotamy' } ]);
+
+      await this.sendApi('editMessageText', {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: keyboard }
       });
       return;
     }
@@ -2645,98 +2755,140 @@ class TelegramBotRunner {
       return;
     }
 
-    // 15. Real Purchase Execution (Guaranteed Cheapest Operator Selection & Direct 5sim Reflection)
-    if (data.startsWith('buy_')) {
-      const parts = data.split('_'); // buy, service, country, price
+    // 15. Real Purchase Execution & In-Place Direct Retry Flow
+    if (data.startsWith('buy_') || data.startsWith('retry_')) {
+      const parts = data.split('_'); // buy/retry, service, country, price, [targetServerId]
       const service = parts[1] || 'whatsapp';
       const country = parts[2] || 'albania';
       const priceRub = parseFloat(parts[3]) || 15.0;
+      const requestedServerId = parts[4]; // Direct user-selected server
 
-      // 1. Strict Balance Check (Give admin unlimited/easy balance for testing so it ALWAYS calls 5sim)
+      // 1. Strict Balance Check
       if (isAdmin && user.balance < priceRub) {
         user.balance = 500.0;
         saveJson('users.json', usersDb);
       }
 
       if (user.balance < priceRub) {
-        await this.sendApi('sendMessage', {
-          chat_id: chatId,
-          text: `⚠️ *عذراً، رصيدك غير كافٍ لإتمام عملية الشراء!*\n\n` +
-            `💰 رصيدك الحالي: *${user.balance} ₽*\n` +
-            `💸 سعر الرقم المطلوب: *${priceRub} ₽*\n\n` +
-            `يرجى شحن حسابك أولاً بالضغط على زر (•🎳 أشحن رصيدك•) عبر الكريمي، النجم، أو كروت الشحن.`,
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [ { text: '•🎳 أشحن رصيدك الآن•', callback_data: 'Payment' } ],
-              [ { text: '🔙 رجوع', callback_data: 'Buynum' } ]
-            ]
-          }
-        });
+        const balMsg = `⚠️ *عذراً، رصيدك غير كافٍ لإتمام عملية الشراء!*\n\n` +
+          `💰 رصيدك الحالي: *${user.balance} ₽*\n` +
+          `💸 سعر الرقم المطلوب: *${priceRub} ₽*\n\n` +
+          `يرجى شحن حسابك أولاً بالضغط على زر (•🎳 أشحن رصيدك•) عبر الكريمي، النجم، أو كروت الشحن.`;
+        const balKb = [
+          [ { text: '•🎳 أشحن رصيدك الآن•', callback_data: 'Payment' } ],
+          [ { text: '🔙 رجوع', callback_data: 'Buynum' } ]
+        ];
+        if (messageId) {
+          await this.sendApi('editMessageText', {
+            chat_id: chatId,
+            message_id: messageId,
+            text: balMsg,
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: balKb }
+          });
+        } else {
+          await this.sendApi('sendMessage', {
+            chat_id: chatId,
+            text: balMsg,
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: balKb }
+          });
+        }
         return;
       }
 
       // 2. User has balance -> Deduct immediately
       updateUserBalance(userId, -priceRub);
 
-      // 3. Check which server this country is linked to
+      // 3. Resolve target server based on user pick, country setting, or store default
       const countryConfig = customPrices[service]?.[country];
-      const targetServerId = countryConfig?.serverId || (storeSettings.activeProvider === 'herosms' ? 'hero-sms' : 'srv-1');
-      const providerDisplayName = targetServerId === 'hero-sms' ? 'سيرفر HeroSMS المباشر (#1513844)' : 'سيرفر مصطفى (5SIM.NET)';
+      const targetServerId = requestedServerId || countryConfig?.serverId || (storeSettings.activeProvider === 'herosms' ? 'hero-sms' : 'srv-kahlani');
+      
+      let providerDisplayName = 'سلفر الكحلاني (عشوائي)';
+      if (targetServerId === 'hero-sms') providerDisplayName = 'سيرفر HeroSMS المعتمد (#1513844)';
+      else if (targetServerId === 'srv-1' || targetServerId === 'mustafa-5sim') providerDisplayName = 'سيرفر مصطفى (5SIM.NET)';
+      else if (targetServerId === 'srv-activate') providerDisplayName = 'سيرفر SMS-Activate السريع';
 
-      await this.sendApi('sendMessage', {
-        chat_id: chatId,
-        text: `⏳ *جاري الاتصال بـ ${providerDisplayName} وسحب الرقم لدولة ${country}... يرجى الانتظار ثوانٍ*`,
-        parse_mode: 'Markdown'
-      });
+      const countryName = countryConfig?.name || country;
+      const waitingText = `⏳ *جاري الاتصال بـ ${providerDisplayName} وسحب رقم لدولة ${countryName}...*\nيرجى الانتظار ثوانٍ معدودة ⏱`;
+
+      if (messageId) {
+        await this.sendApi('editMessageText', {
+          chat_id: chatId,
+          message_id: messageId,
+          text: waitingText,
+          parse_mode: 'Markdown'
+        });
+      } else {
+        await this.sendApi('sendMessage', {
+          chat_id: chatId,
+          text: waitingText,
+          parse_mode: 'Markdown'
+        });
+      }
 
       // Call Linked Server API
       let realResult: any;
-      if (targetServerId === 'hero-sms') {
+      if (targetServerId === 'hero-sms' || targetServerId === 'srv-kahlani') {
         realResult = await buyHeroSmsNumber(country, service);
+        if (!realResult.success && (realResult.error === 'NO_NUMBERS' || realResult.error?.includes('KEY'))) {
+          // Automatic seamless fallback to 5SIM so user doesn't get empty result
+          const backupRes = await buy5SimRealNumber(country, service);
+          if (backupRes.success) realResult = backupRes;
+        }
       } else {
         realResult = await buy5SimRealNumber(country, service);
+        if (!realResult.success && realResult.error === 'NO_NUMBERS') {
+          // Automatic seamless fallback to HeroSMS
+          const backupRes = await buyHeroSmsNumber(country, service);
+          if (backupRes.success) realResult = backupRes;
+        }
       }
 
-      // Handle Provider Errors
+      // Handle Provider Errors with Direct In-Place Retry (No Exiting or Overlapping Pages)
       if (!realResult.success) {
         // REFUND USER IMMEDIATELY
         updateUserBalance(userId, priceRub);
 
-        if (realResult.error === 'NO_NUMBERS') {
-          await this.sendApi('sendMessage', {
+        const failText = `❌ *لم يتم تنفيذ طلبك حالياً*\n\n` +
+          `نظراً لعدم توفر أرقام في *${providerDisplayName}* لدولة *${countryName}* لتطبيق *${service.toUpperCase()}*.\n\n` +
+          `💰 تم استرجاع رصيدك كاملاً (*+${priceRub} ₽*).\n` +
+          `💷 رصيدك الحالي: *${user.balance} ₽*.\n\n` +
+          `👇 *يمكنك إعادة المحاولة مباشرة دون الخروج من الصفحة، أو تجربة سيرفر آخر فورياً بنقرة واحدة:*`;
+
+        const failKeyboard = [
+          [
+            { text: '🔄 إعادة المحاولة فوراً (نفس السيرفر)', callback_data: `buy_${service}_${country}_${priceRub}_${targetServerId}` }
+          ],
+          [
+            { text: '🎲 تجربة بسلفر الكحلاني', callback_data: `buy_${service}_${country}_${priceRub}_srv-kahlani` },
+            { text: '👑 تجربة بـ HeroSMS (#1513844)', callback_data: `buy_${service}_${country}_${priceRub}_hero-sms` }
+          ],
+          [
+            { text: '💎 تجربة بـ 5SIM.NET (مصطفى)', callback_data: `buy_${service}_${country}_${priceRub}_srv-1` }
+          ],
+          [
+            { text: '🔙 اختيار دولة أخرى', callback_data: `app_${service}` },
+            { text: '🏡 القائمة الرئيسية', callback_data: 'main_menu' }
+          ]
+        ];
+
+        if (messageId) {
+          await this.sendApi('editMessageText', {
             chat_id: chatId,
-            text: `❌ *لم يتم تنفيذ طلبك*\n\n` +
-              `نظراً لعدم توفر أرقام حالياً في ${providerDisplayName} لدولة *${country}* لتطبيق *${service}*.\n` +
-              `تم استرجاع رصيدك كاملاً (*+${priceRub} ₽*).\nرصيدك الحالي: *${user.balance} ₽*.\n\n` +
-              `💡 جرب دولة أخرى ذات توفر عالي مثل (كولومبيا 🇨🇴 أو مصر 🇪🇬 أو ألبانيا 🇦🇱 أو أنغولا 🇦🇴).`,
+            message_id: messageId,
+            text: failText,
             parse_mode: 'Markdown',
-            reply_markup: {
-              inline_keyboard: [
-                [ { text: '☎️ تجربة دولة أخرى', callback_data: 'Buynum' } ],
-                [ { text: '🏡 القائمة الرئيسية', callback_data: 'main_menu' } ]
-              ]
-            }
+            reply_markup: { inline_keyboard: failKeyboard }
           });
-          return;
-        }
-
-        if (realResult.error === 'NO_BALANCE') {
+        } else {
           await this.sendApi('sendMessage', {
             chat_id: chatId,
-            text: `⚠️ *رصيد السيرفر في ${providerDisplayName} غير كافٍ حالياً*\n\n` +
-              `تم استرجاع رصيدك كاملاً (*+${priceRub} ₽*).\nتم إشعار إدارة البوت لإعادة شحن رصيد الموقع فوراً.`,
-            parse_mode: 'Markdown'
+            text: failText,
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: failKeyboard }
           });
-          return;
         }
-
-        // Generic error
-        await this.sendApi('sendMessage', {
-          chat_id: chatId,
-          text: `⚠️ تعذر إتمام الطلب من ${providerDisplayName}: ${realResult.error}.\nتم استرجاع رصيدك كاملاً.`,
-          parse_mode: 'Markdown'
-        });
         return;
       }
 
@@ -2764,18 +2916,18 @@ class TelegramBotRunner {
       user.totalPurchased = (user.totalPurchased || 0) + 1;
       saveJson('users.json', usersDb);
 
-      const orderText = `✅ *تم شراء وتخصيص الرقم بنجاح من ${providerDisplayName}!* 📱\n\n` +
-        `☎️ *الرقم:* \`${phone}\`\n` +
-        `🆔 *رقم الطلب في 5sim:* \`#${orderId}\` _(يظهر فورياً في موقع 5sim)_\n` +
-        `🎯 *المشغل المختار:* \`${opName}\` (الأرخص سعراً بالموقع: \`$${costUsd} USD\`)\n` +
+      const orderText = `🎉 *تم شراء وتخصيص الرقم بنجاح من ${providerDisplayName}!* 📱\n\n` +
+        `☎️ *الرقم المخصص:* \`${phone}\`\n` +
+        `🆔 *رقم الطلب:* \`#${orderId}\`\n` +
         `📱 *الخدمة:* *${service.toUpperCase()}*\n` +
-        `🌐 *الدولة:* *${country}*\n` +
+        `🌐 *الدولة:* *${countryName}*\n` +
         `💰 *السعر المخصوم:* *${priceRub} ₽* (روبل)\n` +
         `💷 *رصيدك المتبقي:* *${user.balance} ₽*\n` +
         `⏳ *الصلاحية:* \`15:00 دقيقة\`\n\n` +
-        `⚠️ *الخطوة التالية:*\n` +
+        `⚠️ *الخطوات التالية:*\n` +
         `1️⃣ ضع الرقم في التطبيق واطلب كود الـ SMS.\n` +
-        `2️⃣ اضغط على زر (📩 اجلب الكود ♻️) بالأسفل لاستلام الرمز.`;
+        `2️⃣ اضغط على زر (📩 اجلب الكود ♻️) بالأسفل لاستلام الرمز.\n` +
+        `3️⃣ في حال كان الرقم محظوراً، اضغط (🚫 محظور / إلغاء) للاسترجاع الفوري.`;
 
       const keyboard = [
         [
@@ -2792,16 +2944,26 @@ class TelegramBotRunner {
         ]
       ];
 
-      await this.sendApi('sendMessage', {
-        chat_id: chatId,
-        text: orderText,
-        parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: keyboard }
-      });
+      if (messageId) {
+        await this.sendApi('editMessageText', {
+          chat_id: chatId,
+          message_id: messageId,
+          text: orderText,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: keyboard }
+        });
+      } else {
+        await this.sendApi('sendMessage', {
+          chat_id: chatId,
+          text: orderText,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: keyboard }
+        });
+      }
       return;
     }
 
-    // 16. Check Real SMS Code
+    // 16. Check Real SMS Code (Clean In-Place Query without duplicating chat messages)
     if (data.startsWith('get_code_')) {
       const orderId = data.replace('get_code_', '');
       const order = activeOrdersDb[orderId];
@@ -2811,7 +2973,7 @@ class TelegramBotRunner {
         return;
       }
 
-      await this.answerCallback(queryId, 'جاري الاستعلام عن كود الـ SMS من موقع 5sim...');
+      await this.answerCallback(queryId, 'جاري الاستعلام عن كود الـ SMS من المزود...');
 
       const codeResult = await check5SimRealCode(orderId);
 
@@ -2820,42 +2982,40 @@ class TelegramBotRunner {
         order.code = codeResult.code;
         saveJson('active_orders.json', activeOrdersDb);
 
-        const codeText = `🎉 *تم استلام كود التفعيل الحقيقي من 5SIM بنجاح!* ✅\n\n` +
+        const codeText = `🎉 *تم استلام كود التفعيل بنجاح!* ✅\n\n` +
           `☎️ *الرقم:* \`${order.phone}\`\n` +
           `🔑 *كود التحقق (OTP):* \`${codeResult.code}\`\n\n` +
-          `📜 *نص الرسالة المستلمة:* \`${codeResult.fullSms || codeResult.code}\`\n\n` +
+          `📜 *نص الرسالة:* \`${codeResult.fullSms || codeResult.code}\`\n\n` +
           `إضغط على الكود لنسخه ولصقه في التطبيق. مبروك تفعيل الرقم!`;
 
-        await this.sendApi('sendMessage', {
-          chat_id: chatId,
-          text: codeText,
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [ { text: '☎️ شراء رقم جديد', callback_data: 'Buynum' } ],
-              [ { text: '🏡 القائمة الرئيسية', callback_data: 'main_menu' } ]
-            ]
-          }
-        });
+        const codeKeyboard = [
+          [ { text: '☎️ شراء رقم جديد', callback_data: 'Buynum' } ],
+          [ { text: '🏡 القائمة الرئيسية', callback_data: 'main_menu' } ]
+        ];
+
+        if (messageId) {
+          await this.sendApi('editMessageText', {
+            chat_id: chatId,
+            message_id: messageId,
+            text: codeText,
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: codeKeyboard }
+          });
+        } else {
+          await this.sendApi('sendMessage', {
+            chat_id: chatId,
+            text: codeText,
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: codeKeyboard }
+          });
+        }
       } else {
-        await this.sendApi('sendMessage', {
-          chat_id: chatId,
-          text: `⏳ *الكود لم يصل من المزود بعد*\n\n` +
-            `☎️ الرقم: \`${order.phone}\`\n\n` +
-            `تأكد من إدخال الرقم في التطبيق والضغط على "إرسال رسالة نصية SMS" والانتظار 10 ثوانٍ ثم اضغط على (اجلب الكود ♻️) مجدداً.`,
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [ { text: '📩 اجلب الكود ♻️', callback_data: `get_code_${orderId}` } ],
-              [ { text: '🚫 محظور / إلغاء واسترجاع الرصيد', callback_data: `cancel_order_${orderId}` } ]
-            ]
-          }
-        });
+        await this.answerCallback(queryId, '⏳ الكود لم يصل بعد. يرجى طلب SMS في التطبيق ثم المحاولة ثانية بعد 10 ثوانٍ.', true);
       }
       return;
     }
 
-    // 17. Cancel / Ban Number and Refund
+    // 17. Cancel / Ban Number and Refund (In-Place Edit without clutter)
     if (data.startsWith('cancel_order_')) {
       const orderId = data.replace('cancel_order_', '');
       const order = activeOrdersDb[orderId];
@@ -2873,20 +3033,32 @@ class TelegramBotRunner {
       delete activeOrdersDb[orderId];
       saveJson('active_orders.json', activeOrdersDb);
 
-      await this.sendApi('sendMessage', {
-        chat_id: chatId,
-        text: `🚫 *تم إلغاء الرقم بنجاح واسترداد الرصيد بالكامل!* ✅\n\n` +
-          `💰 المبلغ المسترد: *+${order.priceRub} ₽*\n` +
-          `💷 رصيدك الحالي: *${refundedBal} ₽*\n\n` +
-          `لم يتم خصم أي قرش من حسابك لأن كود التفعيل لم يصل.`,
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [ { text: '☎️ شراء رقم آخر', callback_data: 'Buynum' } ],
-            [ { text: '🏡 القائمة الرئيسية', callback_data: 'main_menu' } ]
-          ]
-        }
-      });
+      const cancelText = `🚫 *تم إلغاء الرقم بنجاح واسترداد الرصيد بالكامل!* ✅\n\n` +
+        `💰 المبلغ المسترد: *+${order.priceRub} ₽*\n` +
+        `💷 رصيدك الحالي: *${refundedBal} ₽*\n\n` +
+        `لم يتم خصم أي مبلغ لأن كود التفعيل لم يصل.`;
+
+      const cancelKb = [
+        [ { text: '☎️ شراء رقم آخر', callback_data: 'Buynum' } ],
+        [ { text: '🏡 القائمة الرئيسية', callback_data: 'main_menu' } ]
+      ];
+
+      if (messageId) {
+        await this.sendApi('editMessageText', {
+          chat_id: chatId,
+          message_id: messageId,
+          text: cancelText,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: cancelKb }
+        });
+      } else {
+        await this.sendApi('sendMessage', {
+          chat_id: chatId,
+          text: cancelText,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: cancelKb }
+        });
+      }
       return;
     }
 
@@ -2950,14 +3122,17 @@ let webhookLogs = loadJson<any[]>('webhook_logs.json', [
 
 // HeroSMS Stubs & OpenAPI client helper
 async function buyHeroSmsNumber(country: string, service: string): Promise<{ success: boolean; phone?: string; id?: string; error?: string }> {
-  const heroSrv = customServers.find(s => s.id === 'hero-sms');
+  const heroSrv = customServers.find(s => s.id === 'hero-sms' || s.id === 'srv-kahlani');
   const apiKey = heroSrv?.apiKey || 'HEROSMS_USER_KEY_1513844';
   const baseUrl = heroSrv?.url || 'https://hero-sms.com/stubs/handler_api.php';
   
   const countryIdMap: Record<string, number> = {
-    'russia': 0, 'ukraine': 1, 'kazakhstan': 2, 'egypt': 21, 'albania': 44, 'yemen': 30, 'colombia': 33, 'saudiarabia': 53
+    'russia': 0, 'ukraine': 1, 'kazakhstan': 2, 'egypt': 21, 'albania': 44, 'yemen': 30, 'colombia': 33, 'saudiarabia': 53,
+    'saudi': 53, 'iraq': 47, 'jordan': 116, 'uae': 95, 'kuwait': 100, 'algeria': 58, 'morocco': 37, 'turkey': 68,
+    'angola': 76, 'argentina': 39, 'afghanistan': 74, 'brazil': 73, 'usa': 187, 'uk': 16
   };
-  const cId = countryIdMap[country] || 44;
+  const cKey = (country || '').toLowerCase().trim();
+  const cId = countryIdMap[cKey] !== undefined ? countryIdMap[cKey] : 44;
   const svcCode = service === 'whatsapp' ? 'wa' : (service === 'telegram' ? 'tg' : 'go');
   
   try {
