@@ -27,7 +27,8 @@ import {
   Mic,
   DollarSign,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Server
 } from 'lucide-react';
 
 interface SimulatorProps {
@@ -47,7 +48,8 @@ export default function PlusTelegramSimulator({
   const [screen, setScreen] = useState<
     'main' | 'apps_availability' | 'continents' | 'arab_countries' | 'servers_list' | 
     'offers_wa' | 'offers_tg' | 'auto_buy_boy' | 'extra_services' | 'temp_mail' | 
-    'instructions' | 'active_order' | 'payments_view' | 'no_numbers_view' | 'admin_panel'
+    'instructions' | 'active_order' | 'payments_view' | 'no_numbers_view' | 'admin_panel' |
+    'admin_servers' | 'admin_countries' | 'admin_add_country' | 'admin_fast_pricing' | 'admin_stats'
   >('main');
 
   // Command Menu Sheet Popup (Matching Screenshots 18 & 19)
@@ -62,6 +64,21 @@ export default function PlusTelegramSimulator({
   // User State
   const [balance, setBalance] = useState(10.5);
   const [chatInput, setChatInput] = useState('');
+
+  // Real-time Servers & Custom Prices Database
+  const [servers, setServers] = useState<any[]>([]);
+  const [customPrices, setCustomPrices] = useState<any>({ whatsapp: {}, telegram: {} });
+  const [editingServerId, setEditingServerId] = useState<string | null>(null);
+  const [renameServerInput, setRenameServerInput] = useState('');
+  const [activeAdminTab, setActiveAdminTab] = useState<'whatsapp' | 'telegram'>('whatsapp');
+  const [quickAddForm, setQuickAddForm] = useState({
+    service: 'whatsapp',
+    code: '',
+    name: '',
+    priceRub: 15,
+    serverId: 'srv-kahlani',
+    serverName: 'سلفر الكحلاني (عشوائي)'
+  });
 
   // Loaded Settings & Data
   const [settings, setSettings] = useState<any>({
@@ -204,12 +221,14 @@ export default function PlusTelegramSimulator({
     { country: 'السعودية', flag: '🇸🇦', srv: '3', price: 18 }
   ];
 
-  // Fetch updated settings & payment accounts
+  // Fetch updated settings, payment accounts, servers, and custom prices
   const loadData = async () => {
     try {
-      const [resSet, resPay] = await Promise.all([
+      const [resSet, resPay, resServers, resPrices] = await Promise.all([
         fetch('/api/store/settings').then(r => r.json()),
-        fetch('/api/store/payment-methods').then(r => r.json())
+        fetch('/api/store/payment-methods').then(r => r.json()),
+        fetch('/api/store/servers').then(r => r.json()),
+        fetch('/api/store/custom-prices').then(r => r.json())
       ]);
       if (resSet && typeof resSet === 'object') {
         setSettings(resSet);
@@ -217,8 +236,146 @@ export default function PlusTelegramSimulator({
       if (Array.isArray(resPay)) {
         setPaymentMethods(resPay);
       }
+      if (Array.isArray(resServers)) {
+        setServers(resServers);
+      }
+      if (resPrices && typeof resPrices === 'object') {
+        setCustomPrices(resPrices);
+      }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleRenameServerDirect = async (id: string, newName: string) => {
+    if (!newName.trim()) return;
+    try {
+      const res = await fetch(`/api/store/servers/${encodeURIComponent(id)}/rename`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`✅ تم تغيير اسم السيرفر إلى: ${newName}`, 'success');
+        setEditingServerId(null);
+        setRenameServerInput('');
+        loadData();
+      } else {
+        showToast('تعذر تغيير الاسم', 'error');
+      }
+    } catch {
+      showToast('خطأ في الاتصال بالخادم', 'error');
+    }
+  };
+
+  const handleLinkCountryServerDirect = async (service: string, country: string, serverId: string, serverName?: string) => {
+    try {
+      const current = customPrices[service]?.[country] || {};
+      const res = await fetch('/api/store/custom-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service,
+          country,
+          name: current.name || country,
+          priceRub: current.priceRub || 15,
+          serverId,
+          serverName: serverName || (serverId === 'srv-kahlani' ? 'سلفر الكحلاني (عشوائي)' : (serverId === 'hero-sms' ? 'HeroSMS' : '5SIM.NET'))
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`🔗 تم ربط ${current.name || country} بـ ${serverName || serverId}!`, 'success');
+        loadData();
+      }
+    } catch {
+      showToast('خطأ أثناء ربط السيرفر', 'error');
+    }
+  };
+
+  const handleUpdatePriceDirect = async (service: string, country: string, newPrice: number) => {
+    try {
+      const current = customPrices[service]?.[country] || {};
+      const priceVal = Math.max(1, Math.round(newPrice));
+      const res = await fetch('/api/store/custom-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service,
+          country,
+          priceRub: priceVal,
+          name: current.name || country,
+          serverId: current.serverId || 'srv-kahlani',
+          serverName: current.serverName || 'سلفر الكحلاني (عشوائي)'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`💵 السعر الجديد: ${priceVal} ₽ (مزامنة فورية)`, 'success');
+        loadData();
+      }
+    } catch {
+      showToast('خطأ في تعديل السعر', 'error');
+    }
+  };
+
+  const handleBulkLinkSimulator = async (serverId: string, serverName: string) => {
+    try {
+      const res = await fetch('/api/store/custom-prices/bulk-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serverId, serverName })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`🎲 تم ربط كافة الدول بـ ${serverName} بنجاح!`, 'success');
+        loadData();
+      }
+    } catch {
+      showToast('خطأ في الربط الجماعي', 'error');
+    }
+  };
+
+  const handleBulkAdjustSimulator = async (percent: number) => {
+    try {
+      const res = await fetch('/api/store/custom-prices/adjust-percent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ percent, service: 'all' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`⚡ تم تطبيق نسبة ${percent > 0 ? '+' : ''}${percent}% على كل الأسعار فورياً!`, 'success');
+        loadData();
+      }
+    } catch {
+      showToast('خطأ في تعديل الأسعار بالنسبة', 'error');
+    }
+  };
+
+  const handleAddCountryDirect = async (cService: string, cCode: string, cName: string, cPrice: number, cServerId: string, cServerName: string) => {
+    if (!cCode) return;
+    try {
+      const res = await fetch('/api/store/custom-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service: cService,
+          country: cCode.toLowerCase().trim(),
+          name: cName || cCode.toUpperCase(),
+          priceRub: cPrice || 15,
+          serverId: cServerId,
+          serverName: cServerName
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`🎉 تمت إضافة وتخصيص ${cName || cCode} بنجاح!`, 'success');
+        loadData();
+      }
+    } catch {
+      showToast('خطأ أثناء إضافة الدولة', 'error');
     }
   };
 
@@ -348,9 +505,88 @@ export default function PlusTelegramSimulator({
     } else if (cmd === '/telegram') {
       setSelectedApp({ name: 'تيليجرام - TELEGRAM', key: 'telegram', icon: '🎲' });
       setScreen('continents');
-    } else if (cmd.startsWith('/setprice')) {
-      showToast('💡 يمكنك تعديل الأسعار مباشرة من تبويب "جدول أسعار الدول" بالأعلى!');
-    } else if (cmd.startsWith('/addcoin') || cmd.startsWith('شحن')) {
+    } else if (cmd.startsWith('/renameserver') || cmd.startsWith('تسمية سيرفر') || cmd.startsWith('تغيير اسم سيرفر')) {
+      const cleaned = cmd.replace(/^\/?(renameserver|تسمية سيرفر|تغيير اسم سيرفر)/i, '').trim();
+      const parts = cleaned.split(/\s+/);
+      if (parts.length >= 2) {
+        const sId = parts[0];
+        const newName = parts.slice(1).join(' ');
+        handleRenameServerDirect(sId, newName);
+        setScreen('admin_servers');
+      } else {
+        showToast('⚠️ الصيغة: /renameserver <معرف_السيرفر> <الاسم الجديد>', 'error');
+      }
+    } else if (cmd.startsWith('/addcountry') || cmd.startsWith('اضافة دولة') || cmd.startsWith('إضافة دولة')) {
+      const cleaned = cmd.replace(/^\/?(addcountry|اضافة دولة|إضافة دولة)/i, '').trim();
+      const parts = cleaned.split(/\s+/);
+      if (parts.length >= 3) {
+        const cSvc = (parts[0].toLowerCase() === 'tg' || parts[0].toLowerCase() === 'telegram' || parts[0] === 'تيليجرام') ? 'telegram' : 'whatsapp';
+        const cCode = parts[1].toLowerCase();
+        const cPrice = parseFloat(parts[2]) || 15;
+        let cServerId = 'srv-kahlani';
+        let cServerName = 'سلفر الكحلاني (عشوائي)';
+        let cName = parts.slice(3).join(' ');
+        if (parts.length >= 4) {
+          const s = parts[3].toLowerCase();
+          if (s.includes('hero')) {
+            cServerId = 'hero-sms';
+            cServerName = 'HeroSMS';
+            cName = parts.slice(4).join(' ');
+          } else if (s.includes('5sim')) {
+            cServerId = 'srv-1';
+            cServerName = '5SIM.NET';
+            cName = parts.slice(4).join(' ');
+          }
+        }
+        handleAddCountryDirect(cSvc, cCode, cName || cCode.toUpperCase(), cPrice, cServerId, cServerName);
+        setScreen('admin_countries');
+      } else {
+        showToast('⚠️ الصيغة: /addcountry <wa/tg> <كود> <السعر> [السيرفر] [الاسم]', 'error');
+      }
+    } else if (cmd.startsWith('/linkserver') || cmd.startsWith('ربط سيرفر') || cmd.startsWith('ربط دولة')) {
+      const cleaned = cmd.replace(/^\/?(linkserver|ربط سيرفر|ربط دولة)/i, '').trim();
+      const parts = cleaned.split(/\s+/);
+      if (parts.length >= 3) {
+        const cSvc = (parts[0].toLowerCase() === 'tg' || parts[0].toLowerCase() === 'telegram') ? 'telegram' : 'whatsapp';
+        const cCode = parts[1].toLowerCase();
+        const sTarget = parts[2].toLowerCase();
+        let sId = 'srv-kahlani';
+        let sName = 'سلفر الكحلاني (عشوائي)';
+        if (sTarget.includes('hero')) {
+          sId = 'hero-sms';
+          sName = 'HeroSMS';
+        } else if (sTarget.includes('5sim')) {
+          sId = 'srv-1';
+          sName = '5SIM.NET';
+        }
+        handleLinkCountryServerDirect(cSvc, cCode, sId, sName);
+        setScreen('admin_countries');
+      } else {
+        showToast('⚠️ الصيغة: /linkserver <wa/tg> <كود_الدولة> <kahlani/hero/5sim>', 'error');
+      }
+    } else if (cmd.startsWith('/setprice') || cmd.startsWith('تسعير')) {
+      const cleaned = cmd.replace(/^\/?(setprice|تسعير)/i, '').trim();
+      const parts = cleaned.split(/\s+/);
+      if (parts.length >= 3) {
+        let cSvc = 'whatsapp';
+        let cCode = parts[1].toLowerCase();
+        let cPrice = parseFloat(parts[2]) || 15;
+        if (parts[0].toLowerCase() === 'tg' || parts[0].toLowerCase() === 'telegram') {
+          cSvc = 'telegram';
+        }
+        handleUpdatePriceDirect(cSvc, cCode, cPrice);
+        setScreen('admin_fast_pricing');
+      } else {
+        showToast('⚠️ الصيغة: /setprice <wa/tg> <كود_الدولة> <السعر_الجديد>', 'error');
+      }
+    } else if (cmd === '/servers' || cmd === 'سيرفرات') {
+      setScreen('admin_servers');
+    } else if (cmd === '/countries' || cmd === 'دول') {
+      setScreen('admin_countries');
+    } else if (cmd === '/stats' || cmd === 'إحصائيات' || cmd === '/baluser') {
+      setScreen('admin_stats');
+    } else if (cmd === '/admin' || cmd === 'admin' || cmd === 'الادمن' || cmd === 'الأدمن' || cmd === 'لوحة الادمن') {
+      setScreen('admin_panel');
       const parts = cmd.match(/\d+(\.\d+)?/g);
       if (parts && parts.length > 0) {
         const amt = parseFloat(parts[parts.length - 1]) || 50;
@@ -1245,40 +1481,75 @@ export default function PlusTelegramSimulator({
             </div>
           )}
 
-          {/* 14. SCREEN: ADMIN PANEL */}
+          {/* 14. SCREEN: ADMIN PANEL MAIN MENU */}
           {screen === 'admin_panel' && (
             <div className="space-y-3 animate-in fade-in duration-200">
               <div className="bg-[#1e2a38] border border-amber-500/40 rounded-2xl p-4 text-xs space-y-2 leading-relaxed">
                 <div className="font-black text-amber-400 text-sm border-b border-slate-700 pb-2 flex items-center justify-between">
-                  <span>👑 لوحة تحكم الأدمن والمالك</span>
+                  <span>👑 لوحة تحكم الأدمن والمالك الشاملة</span>
                   <span className="font-mono text-[10px] text-slate-400">8338869162</span>
                 </div>
                 <p className="text-slate-300 text-[11px]">
-                  أهلاً بك مطوري مصطفى 🖤! يمكنك إدارة السيرفرات والأسعار والقنوات وشحن الأرصدة مباشرة.
+                  تحكم كامل ومباشر بجميع وظائف البوت مع مزامنة فورية 100%:
+                  تخصيص الدول، تغيير الأسعار، تسمية السيرفرات، وإدارة التوريد.
                 </p>
               </div>
 
               <div className="space-y-2 text-xs font-bold">
                 <button
-                  onClick={() => onOpenSettings && onOpenSettings()}
-                  className="w-full py-2.5 bg-[#242f3d] hover:bg-[#2b394a] text-blue-300 border border-slate-700 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={() => setScreen('admin_countries')}
+                  className="w-full py-3 bg-gradient-to-r from-blue-700/80 to-indigo-700/80 hover:from-blue-600 hover:to-indigo-600 text-white border border-blue-500/40 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow"
                 >
-                  ✍️ تعديل نصوص وكتابات البوت
+                  <Globe size={16} className="text-cyan-300" />
+                  🌍 إدارة وتخصيص الدول وربطها بالمواقع
                 </button>
 
-                <button
-                  onClick={() => onOpenPayments && onOpenPayments()}
-                  className="w-full py-2.5 bg-[#242f3d] hover:bg-[#2b394a] text-emerald-300 border border-slate-700 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  💳 إدارة حسابات وطرق الإيداع
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setScreen('admin_add_country')}
+                    className="py-2.5 bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>➕ إضافة دولة فورياً</span>
+                  </button>
+                  <button
+                    onClick={() => setScreen('admin_fast_pricing')}
+                    className="py-2.5 bg-amber-950/70 hover:bg-amber-900 border border-amber-500/40 text-amber-300 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>💵 تعديل الأسعار ⚡</span>
+                  </button>
+                </div>
 
                 <button
-                  onClick={() => onOpenServers && onOpenServers()}
-                  className="w-full py-2.5 bg-[#242f3d] hover:bg-[#2b394a] text-amber-300 border border-slate-700 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={() => setScreen('admin_servers')}
+                  className="w-full py-2.5 bg-[#242f3d] hover:bg-[#2b394a] text-purple-300 border border-purple-500/40 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  🌐 إدارة سيرفرات ومواقع API
+                  <Server size={15} className="text-purple-400" />
+                  🌐 إدارة وتسمية السيرفرات (الكحلاني / HeroSMS)
                 </button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setScreen('payments_view')}
+                    className="py-2.5 bg-[#242f3d] hover:bg-[#2b394a] text-emerald-300 border border-slate-700 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    💳 طرق الشحن والحسابات
+                  </button>
+                  <button
+                    onClick={() => setScreen('admin_stats')}
+                    className="py-2.5 bg-[#242f3d] hover:bg-[#2b394a] text-cyan-300 border border-slate-700 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    📊 إحصائيات البوت والروبل
+                  </button>
+                </div>
+
+                {onOpenSettings && (
+                  <button
+                    onClick={onOpenSettings}
+                    className="w-full py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-xl flex items-center justify-center gap-1.5 text-[11px]"
+                  >
+                    ✍️ تعديل نصوص ورسائل الترحيب (لوحة الويب)
+                  </button>
+                )}
 
                 <button
                   onClick={() => setScreen('main')}
@@ -1288,6 +1559,542 @@ export default function PlusTelegramSimulator({
                   الرجوع للقائمة الرئيسية
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* 15. SCREEN: ADMIN SERVERS MANAGEMENT (RENAME TO سلفر الكحلاني) */}
+          {screen === 'admin_servers' && (
+            <div className="space-y-3 animate-in fade-in duration-200">
+              <div className="bg-[#1e2a38] border border-purple-500/40 rounded-2xl p-4 text-xs space-y-2">
+                <div className="font-black text-purple-300 text-sm border-b border-slate-700 pb-2 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Server size={16} />
+                    إدارة وتسمية سيرفرات التوريد
+                  </span>
+                  <span className="text-[10px] bg-purple-950 text-purple-300 px-2 py-0.5 rounded border border-purple-800 font-mono">
+                    {servers.length} سيرفر
+                  </span>
+                </div>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  يمكنك إعادة تسمية أي سيرفر بضغطة زر مباشرة (مثلاً: <b className="text-amber-300">سلفر الكحلاني (عشوائي)</b>) وتنعكس التسمية في البوت والمتجر فورياً!
+                </p>
+              </div>
+
+              {/* Server List */}
+              <div className="space-y-2 text-xs">
+                {servers.map(srv => (
+                  <div
+                    key={srv.id}
+                    className={`bg-slate-900 border rounded-2xl p-3.5 space-y-2.5 ${
+                      srv.id === 'srv-kahlani' ? 'border-purple-500/60 bg-purple-950/20' : 'border-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {editingServerId === srv.id ? (
+                          <div className="flex items-center gap-1.5 my-1">
+                            <input
+                              type="text"
+                              value={renameServerInput}
+                              onChange={e => setRenameServerInput(e.target.value)}
+                              className="bg-slate-950 border border-purple-500 rounded-lg px-2 py-1 text-xs text-white outline-none w-full font-bold"
+                              placeholder="الاسم الجديد..."
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleRenameServerDirect(srv.id, renameServerInput)}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold cursor-pointer shrink-0"
+                            >
+                              حفظ
+                            </button>
+                            <button
+                              onClick={() => setEditingServerId(null)}
+                              className="px-2 py-1 bg-slate-800 text-slate-400 rounded-lg text-[10px] cursor-pointer shrink-0"
+                            >
+                              إلغاء
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-white text-xs">{srv.name}</span>
+                              <span className="text-[10px] text-slate-500 font-mono">({srv.id})</span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-mono block truncate">{srv.url}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                        متصل
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800 text-[11px]">
+                      <span className="font-mono text-emerald-400 font-bold">
+                        رصيد: {srv.liveBalance !== undefined ? srv.liveBalance : 100} ₽
+                      </span>
+
+                      <div className="flex items-center gap-1.5">
+                        {srv.name !== 'سلفر الكحلاني (عشوائي)' && (
+                          <button
+                            onClick={() => handleRenameServerDirect(srv.id, 'سلفر الكحلاني (عشوائي)')}
+                            className="px-2 py-1 bg-purple-950 hover:bg-purple-900 text-purple-300 border border-purple-700/60 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
+                            title="تسمية السيرفر فوراً إلى: سلفر الكحلاني (عشوائي)"
+                          >
+                            🎲 تسمية للكحلاني
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setEditingServerId(srv.id);
+                            setRenameServerInput(srv.name);
+                          }}
+                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[10px] font-bold cursor-pointer"
+                        >
+                          ✏️ تعديل الاسم
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => setScreen('admin_panel')}
+                  className="w-full py-2 bg-slate-800 text-slate-300 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold"
+                >
+                  <ArrowRight size={14} />
+                  الرجوع للوحة الأدمن
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 16. SCREEN: ADMIN COUNTRIES & LINKING (CUSTOMIZE & LINK SITES) */}
+          {screen === 'admin_countries' && (
+            <div className="space-y-3 animate-in fade-in duration-200">
+              <div className="bg-[#1e2a38] border border-blue-500/40 rounded-2xl p-4 text-xs space-y-2">
+                <div className="font-black text-cyan-300 text-sm border-b border-slate-700 pb-2 flex items-center justify-between">
+                  <span>🌍 تخصيص الدول وربطها بالمواقع</span>
+                  <span className="text-[10px] bg-blue-950 text-blue-300 px-2 py-0.5 rounded border border-blue-800">
+                    مزامنة فورية ⚡
+                  </span>
+                </div>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  حدد السيرفر المزود لكل دولة بضغطة زر واحدة (<b className="text-purple-300">الكحلاني</b> أو <b className="text-emerald-300">HeroSMS</b> أو <b className="text-blue-300">5SIM</b>).
+                </p>
+              </div>
+
+              {/* Service Tab Switcher */}
+              <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                <button
+                  onClick={() => setActiveAdminTab('whatsapp')}
+                  className={`py-2 rounded-xl border transition-all cursor-pointer ${
+                    activeAdminTab === 'whatsapp'
+                      ? 'bg-emerald-600 text-white border-emerald-500 shadow'
+                      : 'bg-slate-900 text-slate-400 border-slate-800'
+                  }`}
+                >
+                  واتساب WhatsApp ({Object.keys(customPrices.whatsapp || {}).length})
+                </button>
+                <button
+                  onClick={() => setActiveAdminTab('telegram')}
+                  className={`py-2 rounded-xl border transition-all cursor-pointer ${
+                    activeAdminTab === 'telegram'
+                      ? 'bg-blue-600 text-white border-blue-500 shadow'
+                      : 'bg-slate-900 text-slate-400 border-slate-800'
+                  }`}
+                >
+                  تيليجرام Telegram ({Object.keys(customPrices.telegram || {}).length})
+                </button>
+              </div>
+
+              {/* Bulk Actions */}
+              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 space-y-2 text-xs">
+                <span className="text-[11px] text-slate-400 font-bold block">إجراءات سريعة على جميع الدول:</span>
+                <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold">
+                  <button
+                    onClick={() => handleBulkLinkSimulator('srv-kahlani', 'سلفر الكحلاني (عشوائي)')}
+                    className="py-1.5 bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-700/60 rounded-lg cursor-pointer"
+                  >
+                    🎲 ربط الكل بـ الكحلاني
+                  </button>
+                  <button
+                    onClick={() => handleBulkLinkSimulator('hero-sms', 'HeroSMS')}
+                    className="py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 rounded-lg cursor-pointer"
+                  >
+                    👑 ربط الكل بـ HeroSMS
+                  </button>
+                  <button
+                    onClick={() => handleBulkAdjustSimulator(10)}
+                    className="py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded-lg cursor-pointer"
+                  >
+                    📈 +10% للكل
+                  </button>
+                  <button
+                    onClick={() => handleBulkAdjustSimulator(-10)}
+                    className="py-1.5 bg-slate-800 hover:bg-slate-700 text-rose-300 rounded-lg cursor-pointer"
+                  >
+                    📉 -10% للكل
+                  </button>
+                </div>
+              </div>
+
+              {/* Countries List */}
+              <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+                {Object.entries(customPrices[activeAdminTab] || {}).map(([cKey, cInfo]: [string, any]) => (
+                  <div
+                    key={cKey}
+                    className="bg-slate-900 border border-slate-800 rounded-2xl p-3 text-xs space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-white text-xs block">{cInfo.name}</span>
+                        <span className="text-[10px] text-slate-500 font-mono">{cKey}</span>
+                      </div>
+                      <div className="text-left">
+                        <span className="font-mono text-emerald-400 font-black text-sm block">
+                          {cInfo.priceRub} ₽
+                        </span>
+                        <span className="text-[10px] bg-slate-950 text-slate-300 px-2 py-0.5 rounded border border-slate-800">
+                          {cInfo.serverId === 'srv-kahlani' ? '🎲 الكحلاني' : (cInfo.serverId === 'hero-sms' ? '👑 HeroSMS' : '💎 5SIM')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Linking & Price Adjust Buttons */}
+                    <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-800 text-[10px] font-bold">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleLinkCountryServerDirect(activeAdminTab, cKey, 'srv-kahlani', 'سلفر الكحلاني (عشوائي)')}
+                          className={`px-2 py-1 rounded transition-colors cursor-pointer ${
+                            cInfo.serverId === 'srv-kahlani'
+                              ? 'bg-purple-600 text-white font-black'
+                              : 'bg-purple-950 text-purple-300 hover:bg-purple-900'
+                          }`}
+                        >
+                          الكحلاني
+                        </button>
+                        <button
+                          onClick={() => handleLinkCountryServerDirect(activeAdminTab, cKey, 'hero-sms', 'HeroSMS')}
+                          className={`px-2 py-1 rounded transition-colors cursor-pointer ${
+                            cInfo.serverId === 'hero-sms'
+                              ? 'bg-emerald-600 text-white font-black'
+                              : 'bg-emerald-950 text-emerald-300 hover:bg-emerald-900'
+                          }`}
+                        >
+                          HeroSMS
+                        </button>
+                        <button
+                          onClick={() => handleLinkCountryServerDirect(activeAdminTab, cKey, 'srv-1', '5SIM.NET')}
+                          className={`px-2 py-1 rounded transition-colors cursor-pointer ${
+                            cInfo.serverId === 'srv-1'
+                              ? 'bg-blue-600 text-white font-black'
+                              : 'bg-blue-950 text-blue-300 hover:bg-blue-900'
+                          }`}
+                        >
+                          5SIM
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleUpdatePriceDirect(activeAdminTab, cKey, (cInfo.priceRub || 15) - 1)}
+                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-rose-300 rounded font-mono font-bold"
+                          title="إنقاص 1 روبل"
+                        >
+                          -1₽
+                        </button>
+                        <button
+                          onClick={() => handleUpdatePriceDirect(activeAdminTab, cKey, (cInfo.priceRub || 15) + 1)}
+                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded font-mono font-bold"
+                          title="زيادة 1 روبل"
+                        >
+                          +1₽
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2 pt-2 text-xs font-bold">
+                <button
+                  onClick={() => setScreen('admin_add_country')}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl flex items-center justify-center gap-1.5 shadow"
+                >
+                  ➕ إضافة دولة جديدة
+                </button>
+                <button
+                  onClick={() => setScreen('admin_panel')}
+                  className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl"
+                >
+                  رجوع
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 17. SCREEN: ADMIN ADD COUNTRY PRESETS & FORM */}
+          {screen === 'admin_add_country' && (
+            <div className="space-y-3 animate-in fade-in duration-200">
+              <div className="bg-[#1e2a38] border border-emerald-500/40 rounded-2xl p-4 text-xs space-y-2">
+                <div className="font-black text-emerald-300 text-sm border-b border-slate-700 pb-2 flex items-center justify-between">
+                  <span>➕ إضافة وتخصيص دولة وربطها بسيرفر</span>
+                </div>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  أضف دولة شائعة بضغطة زر واحدة، أو املأ النموذج المباشر لربط أي دولة بأي سيرفر فورياً.
+                </p>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2 text-xs">
+                <span className="text-[11px] text-slate-300 font-bold block">إضافة سريعة مسبقة الإعداد:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { code: 'yemen', name: 'اليمن 🇾🇪', price: 25 },
+                    { code: 'saudi', name: 'السعودية 🇸🇦', price: 30 },
+                    { code: 'egypt', name: 'مصر 🇪🇬', price: 15 },
+                    { code: 'iraq', name: 'العراق 🇮🇶', price: 20 },
+                    { code: 'algeria', name: 'الجزائر 🇩🇿', price: 18 },
+                    { code: 'jordan', name: 'الأردن 🇯🇴', price: 22 },
+                    { code: 'uae', name: 'الإمارات 🇦🇪', price: 28 },
+                    { code: 'kuwait', name: 'الكويت 🇰🇼', price: 35 },
+                    { code: 'morocco', name: 'المغرب 🇲🇦', price: 18 },
+                    { code: 'turkey', name: 'تركيا 🇹🇷', price: 18 },
+                    { code: 'usa', name: 'أمريكا 🇺🇸', price: 12 }
+                  ].map(p => (
+                    <button
+                      key={p.code}
+                      onClick={() => handleAddCountryDirect('whatsapp', p.code, p.name, p.price, 'srv-kahlani', 'سلفر الكحلاني (عشوائي)')}
+                      className="px-2.5 py-1 bg-slate-950 hover:bg-emerald-950 border border-slate-800 hover:border-emerald-500/50 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white cursor-pointer"
+                    >
+                      {p.name} ({p.price}₽)
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Manual Country Form */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 text-xs">
+                <span className="font-bold text-white text-xs block">نموذج الإضافة والتخصيص:</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-1">البرنامج:</label>
+                    <select
+                      value={quickAddForm.service}
+                      onChange={e => setQuickAddForm({ ...quickAddForm, service: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white"
+                    >
+                      <option value="whatsapp">واتساب WhatsApp</option>
+                      <option value="telegram">تيليجرام Telegram</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-1">كود الدولة (إنجليزي):</label>
+                    <input
+                      type="text"
+                      placeholder="مثال: yemen"
+                      value={quickAddForm.code}
+                      onChange={e => setQuickAddForm({ ...quickAddForm, code: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-mono"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-1">الاسم بالعربي والعلم:</label>
+                    <input
+                      type="text"
+                      placeholder="مثال: اليمن 🇾🇪"
+                      value={quickAddForm.name}
+                      onChange={e => setQuickAddForm({ ...quickAddForm, name: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-1">السعر (₽):</label>
+                    <input
+                      type="number"
+                      value={quickAddForm.priceRub}
+                      onChange={e => setQuickAddForm({ ...quickAddForm, priceRub: parseFloat(e.target.value) || 15 })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-emerald-400 font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-1">السيرفر المربوط:</label>
+                  <select
+                    value={quickAddForm.serverId}
+                    onChange={e => {
+                      const sId = e.target.value;
+                      const sObj = servers.find(s => s.id === sId);
+                      setQuickAddForm({
+                        ...quickAddForm,
+                        serverId: sId,
+                        serverName: sObj?.name || 'سلفر الكحلاني (عشوائي)'
+                      });
+                    }}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-bold"
+                  >
+                    <option value="srv-kahlani">🎲 سلفر الكحلاني (عشوائي)</option>
+                    <option value="hero-sms">👑 سيرفر HeroSMS (#1513844)</option>
+                    <option value="mustafa-5sim">💎 سيرفر 5SIM.NET (مصطفى)</option>
+                  </select>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (!quickAddForm.code) {
+                      showToast('يرجى إدخال كود الدولة بالإنجليزي', 'error');
+                      return;
+                    }
+                    handleAddCountryDirect(
+                      quickAddForm.service,
+                      quickAddForm.code,
+                      quickAddForm.name || quickAddForm.code.toUpperCase(),
+                      quickAddForm.priceRub,
+                      quickAddForm.serverId,
+                      quickAddForm.serverName
+                    );
+                    setScreen('admin_countries');
+                  }}
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl cursor-pointer shadow mt-1"
+                >
+                  حفظ وتطبيق الدولة فورياً
+                </button>
+              </div>
+
+              <button
+                onClick={() => setScreen('admin_countries')}
+                className="w-full py-2 bg-slate-800 text-slate-300 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold"
+              >
+                <ArrowRight size={14} />
+                الرجوع لقائمة الدول
+              </button>
+            </div>
+          )}
+
+          {/* 18. SCREEN: ADMIN FAST PRICING (DIRECT ADJUSTMENTS) */}
+          {screen === 'admin_fast_pricing' && (
+            <div className="space-y-3 animate-in fade-in duration-200">
+              <div className="bg-[#1e2a38] border border-amber-500/40 rounded-2xl p-4 text-xs space-y-2">
+                <div className="font-black text-amber-300 text-sm border-b border-slate-700 pb-2 flex items-center justify-between">
+                  <span>💵 تعديل الأسعار المباشر السريع ⚡</span>
+                </div>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  تعديل أسعار الدول بنقرة واحدة (+1 ₽ / -1 ₽ / +5 ₽) دون الحاجة لإعادة كتابة الأرقام. المزامنة فورية!
+                </p>
+              </div>
+
+              {/* Service Tabs */}
+              <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                <button
+                  onClick={() => setActiveAdminTab('whatsapp')}
+                  className={`py-2 rounded-xl border ${activeAdminTab === 'whatsapp' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
+                >
+                  أسعار واتساب
+                </button>
+                <button
+                  onClick={() => setActiveAdminTab('telegram')}
+                  className={`py-2 rounded-xl border ${activeAdminTab === 'telegram' ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
+                >
+                  أسعار تيليجرام
+                </button>
+              </div>
+
+              {/* Price Adjust Cards */}
+              <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1 text-xs">
+                {Object.entries(customPrices[activeAdminTab] || {}).map(([cKey, cInfo]: [string, any]) => (
+                  <div key={cKey} className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex items-center justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-white text-xs block">{cInfo.name}</span>
+                      <span className="text-[10px] text-slate-500 font-mono">{cKey}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-emerald-400 font-black text-sm px-2">
+                        {cInfo.priceRub} ₽
+                      </span>
+                      <button
+                        onClick={() => handleUpdatePriceDirect(activeAdminTab, cKey, (cInfo.priceRub || 15) - 1)}
+                        className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-rose-300 rounded font-bold"
+                      >
+                        -1
+                      </button>
+                      <button
+                        onClick={() => handleUpdatePriceDirect(activeAdminTab, cKey, (cInfo.priceRub || 15) + 1)}
+                        className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded font-bold"
+                      >
+                        +1
+                      </button>
+                      <button
+                        onClick={() => handleUpdatePriceDirect(activeAdminTab, cKey, (cInfo.priceRub || 15) + 5)}
+                        className="px-2 py-1 bg-amber-950 hover:bg-amber-900 text-amber-300 border border-amber-800 rounded font-bold text-[10px]"
+                      >
+                        +5
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setScreen('admin_panel')}
+                className="w-full py-2 bg-slate-800 text-slate-300 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold"
+              >
+                <ArrowRight size={14} />
+                الرجوع للوحة الأدمن
+              </button>
+            </div>
+          )}
+
+          {/* 19. SCREEN: ADMIN STATS & LIVE BALANCES */}
+          {screen === 'admin_stats' && (
+            <div className="space-y-3 animate-in fade-in duration-200">
+              <div className="bg-[#1e2a38] border border-cyan-500/40 rounded-2xl p-4 text-xs space-y-2">
+                <div className="font-black text-cyan-300 text-sm border-b border-slate-700 pb-2 flex items-center justify-between">
+                  <span>📊 إحصائيات البوت وأرصدة المزودين الحية</span>
+                  <span className="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800">
+                    ONLINE
+                  </span>
+                </div>
+                <div className="space-y-2 text-slate-200 text-[11px] pt-1">
+                  <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                    <span className="text-slate-400">👑 سيرفر HeroSMS المعتمد (#1513844):</span>
+                    <span className="font-mono text-emerald-400 font-bold">340.50 ₽ (متصل)</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                    <span className="text-slate-400">💎 سيرفر 5SIM.NET (مصطفى #4437001):</span>
+                    <span className="font-mono text-cyan-300 font-bold">$3.49 USD (متصل)</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                    <span className="text-slate-400">🎲 سلفر الكحلاني (عشوائي):</span>
+                    <span className="font-mono text-purple-300 font-bold">500.00 ₽ (نشط)</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                    <span className="text-slate-400">📡 عناوين الويب هوك المصرح بها:</span>
+                    <span className="font-mono text-slate-300 text-[10px]">84.32.223.53 | 185.138.88.87</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">👥 المستخدمين المسجلين:</span>
+                    <span className="font-mono font-bold text-white">3,232 مستخدم</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setScreen('admin_panel')}
+                className="w-full py-2 bg-slate-800 text-slate-300 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold"
+              >
+                <ArrowRight size={14} />
+                الرجوع للوحة الأدمن
+              </button>
             </div>
           )}
         </div>
