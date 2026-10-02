@@ -61,6 +61,15 @@ export default function PlusTelegramSimulator({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
+  // In-Place Retry & Server Switching State (No Screen Hopping)
+  const [lastFailedAttempt, setLastFailedAttempt] = useState<{
+    serverId: string;
+    serverName: string;
+    price: number;
+    message: string;
+    retryCount: number;
+  } | null>(null);
+
   // User State
   const [balance, setBalance] = useState(10.5);
   const [chatInput, setChatInput] = useState('');
@@ -82,7 +91,7 @@ export default function PlusTelegramSimulator({
 
   // Loaded Settings & Data
   const [settings, setSettings] = useState<any>({
-    accountTitle: 'مكتب الإبداع',
+    accountTitle: 'المركز التقني',
     botName: 'PLUS SMS Hub Bot',
     usersCount: '3,232',
     welcomeMessage: 'قسم الاكثر توفرا لجميع البرامج 💚\nكل ماعليك هو اختيار البرنامج ومن ثم سيتم نقلك الا عده دول اختر اي دوله وقم بالبحث في سيفراتها المتنوعه 🤍',
@@ -99,8 +108,8 @@ export default function PlusTelegramSimulator({
     instruction5: 'عند شراء رقم مسجل مسبقًا، وبعد إرسال رسالة نصية، يمكنك طلب الرمز عبر البوت. إذا ألغيتَ الطلب أو غيّرتَ الرقم، فقد تتلقى إخطار. ننصحك بالانتظار دقيقتين، ثم إعادة طلب الرمز، وبعدها يمكنك تغيير الرقم أو إلغاء الطلب.',
     instruction6: 'يسعدنا استخدامك لبرنامجنا الآلي. نشكرك على انضمامك إلى خدماتنا الإلكترونية.\n\nشكراً جزيلاً لتفهمك.\n#Support',
     noNumbersMessage: '💚 لا يوجد أرقام في هذا السيرفر حالياً... قم بتجربة سيرفر آخر 💙',
-    adminId: '8338869162',
-    adminUsername: 'Engku8'
+    adminId: 'PLUS_ADMIN',
+    adminUsername: 'PLUS_SMS_BOT'
   });
 
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
@@ -388,8 +397,8 @@ export default function PlusTelegramSimulator({
     c.name.includes(searchQuery) || c.key.includes(searchQuery.toLowerCase())
   );
 
-  // Buy Number Execution (Real 5SIM API Integration)
-  const handleBuyNumber = async (srv: { name: string; price: number }) => {
+  // Buy Number Execution (Real Multi-Server API Integration with In-Place Direct Retry)
+  const handleBuyNumber = async (srv: { id?: string; name: string; price: number }) => {
     if (balance < srv.price) {
       showToast(`❌ رصيدك الحالي (${balance} ₽) لا يكفي لشراء هذا الرقم (${srv.price} ₽). يرجى شحن الرصيد.`, 'error');
       setScreen('payments_view');
@@ -403,12 +412,14 @@ export default function PlusTelegramSimulator({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           service: selectedApp.key,
-          country: selectedCountry.key === 'kuwait' ? 'albania' : (selectedCountry.key === 'yemen' ? 'colombia' : selectedCountry.key)
+          country: selectedCountry.key === 'kuwait' ? 'albania' : (selectedCountry.key === 'yemen' ? 'colombia' : selectedCountry.key),
+          serverId: srv.id || 'srv-kahlani'
         })
       });
 
       const data = await res.json();
       if (data.success && data.phone) {
+        setLastFailedAttempt(null);
         setBalance(prev => +(prev - srv.price).toFixed(2));
         setOrder({
           id: data.id,
@@ -419,14 +430,126 @@ export default function PlusTelegramSimulator({
           status: 'PENDING'
         });
         setScreen('active_order');
-        showToast('✅ تم شراء وتخصيص الرقم الحقيقي من المزود 5SIM.NET بنجاح!', 'success');
+        showToast(`✅ تم شراء وتخصيص الرقم الحقيقي بنجاح من ${data.provider || srv.name}!`, 'success');
       } else {
-        // Show Screenshot 20: No numbers dialog
-        setScreen('no_numbers_view');
-        showToast(settings.noNumbersMessage || '💚 لا يوجد أرقام في هذا السيرفر حالياً... قم بتجربة سيرفر آخر 💙', 'info');
+        // DIRECT IN-PLACE RETRY: Keep user on current screen, no overlapping or leaving pages!
+        setLastFailedAttempt({
+          serverId: srv.id || 'srv-kahlani',
+          serverName: srv.name,
+          price: srv.price,
+          message: data.message || 'لا توجد أرقام متوفرة حالياً في هذا السيرفر لهذه الدولة في هذا الوقت.',
+          retryCount: (lastFailedAttempt?.retryCount || 0) + 1
+        });
+        showToast(`⚠️ لا تتوفر أرقام حالياً في ${srv.name}. يمكنك إعادة المحاولة فوراً بنقرة واحدة!`, 'info');
       }
     } catch (e: any) {
+      setLastFailedAttempt({
+        serverId: srv.id || 'srv-kahlani',
+        serverName: srv.name,
+        price: srv.price,
+        message: `خطأ في الاتصال: ${e.message}`,
+        retryCount: (lastFailedAttempt?.retryCount || 0) + 1
+      });
       showToast(`خطأ في الشراء: ${e.message}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Auto-Scan: Sequential attempt across all servers
+  const handleAutoScan = async () => {
+    const currentPrice = customPrices[selectedApp.key]?.[selectedCountry.key]?.priceRub || 15;
+    if (balance < currentPrice) {
+      showToast(`❌ رصيدك الحالي (${balance} ₽) لا يكفي لشراء هذا الرقم (${currentPrice} ₽).`, 'error');
+      setScreen('payments_view');
+      return;
+    }
+
+    setLoading(true);
+    showToast('⚡ جاري فحص جميع السيرفرات تلقائياً بحثاً عن رقم متوفر...', 'info');
+
+    const scanServers = servers.length > 0 ? servers : [
+      { id: 'srv-kahlani', name: 'سلفر الكحلاني (عشوائي)' },
+      { id: 'hero-sms', name: 'سيرفر HeroSMS المعتمد (#1513844)' },
+      { id: 'mustafa-5sim', name: 'سيرفر مصطفى (5SIM.NET)' }
+    ];
+
+    for (const srv of scanServers) {
+      try {
+        const res = await fetch('/api/providers/buy-number', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service: selectedApp.key,
+            country: selectedCountry.key === 'kuwait' ? 'albania' : (selectedCountry.key === 'yemen' ? 'colombia' : selectedCountry.key),
+            serverId: srv.id
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.phone) {
+          setLastFailedAttempt(null);
+          setBalance(prev => +(prev - currentPrice).toFixed(2));
+          setOrder({
+            id: data.id,
+            phone: data.phone,
+            service: selectedApp.name,
+            country: `${selectedCountry.name} ${selectedCountry.flag}`,
+            price: currentPrice,
+            status: 'PENDING'
+          });
+          setScreen('active_order');
+          setLoading(false);
+          showToast(`🎉 تم العثور على رقم وتخصيصه فورياً من ${srv.name}!`, 'success');
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    setLoading(false);
+    setLastFailedAttempt({
+      serverId: 'all',
+      serverName: 'جميع السيرفرات',
+      price: currentPrice,
+      message: `تم فحص جميع السيرفرات ولم تتوفر أرقام لدولة ${selectedCountry.name} في هذه اللحظة.`,
+      retryCount: (lastFailedAttempt?.retryCount || 0) + 1
+    });
+    showToast('⚠️ تم فحص جميع السيرفرات ولم تتوفر أرقام حالياً. يمكنك إعادة المحاولة أو تجربة رقم تجريبي فوراً.', 'info');
+  };
+
+  // Demo Buy for Immediate Testing & Verification
+  const handleDemoBuy = async () => {
+    const demoPrice = customPrices[selectedApp.key]?.[selectedCountry.key]?.priceRub || 15;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/providers/buy-demo-number', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service: selectedApp.key,
+          country: selectedCountry.key,
+          countryName: selectedCountry.name,
+          prefix: selectedCountry.prefix
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLastFailedAttempt(null);
+        setBalance(prev => +(prev - demoPrice).toFixed(2));
+        setOrder({
+          id: data.id,
+          phone: data.phone,
+          service: selectedApp.name,
+          country: `${selectedCountry.name} ${selectedCountry.flag}`,
+          price: demoPrice,
+          status: 'PENDING'
+        });
+        setScreen('active_order');
+        showToast('🧪 تم تخصيص رقم تجريبي فوراً! اضغط (📩 اجلب الكود) لاستلام الرمز الآن.', 'success');
+      }
+    } catch (e: any) {
+      showToast(`خطأ: ${e.message}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -671,7 +794,7 @@ export default function PlusTelegramSimulator({
                 </p>
                 <div className="text-center font-mono text-emerald-400 pt-2 border-t border-slate-700/50 flex items-center justify-around text-[11px]">
                   <span>💷 رصيدك: <b>{balance} ₽</b></span>
-                  <span>🆔 : <code className="bg-slate-900 px-1.5 py-0.5 rounded">8338869162</code></span>
+                  <span>حسابك: <code className="bg-slate-900 text-emerald-400 px-1.5 py-0.5 rounded font-mono">PLUS-USER</code></span>
                 </div>
               </div>
 
@@ -948,9 +1071,55 @@ export default function PlusTelegramSimulator({
 
                 <p className="text-[11px] text-slate-400 pt-1 border-t border-slate-700/50">
                   قم بالضغط على احد السيرفرات لشراء الرقم ✔️<br />
-                  يختلف التوفر والجودة من سيفر لآخر ✔️
+                  يختلف التوفر والجودة من سيرفر لآخر ✔️
                 </p>
               </div>
+
+              {/* In-Place Alert when No Numbers are Available (No Exiting or Overlapping Pages) */}
+              {lastFailedAttempt && (
+                <div className="bg-amber-950/70 border-2 border-amber-500/60 rounded-2xl p-4 text-xs space-y-3 animate-in fade-in shadow-lg">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 text-amber-300 font-bold">
+                      <AlertTriangle size={18} className="text-amber-400 shrink-0" />
+                      <span>{lastFailedAttempt.message}</span>
+                    </div>
+                    <span className="text-[10px] bg-slate-900 text-slate-300 px-2 py-0.5 rounded-full shrink-0 font-mono">
+                      محاولة #{lastFailedAttempt.retryCount}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-emerald-400 bg-emerald-950/50 p-2 rounded-xl border border-emerald-600/30 flex items-center justify-between">
+                    <span>💰 تم استرجاع رصيدك كاملاً لمحافظتك:</span>
+                    <span className="font-mono font-bold text-white">{balance} ₽</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 font-bold">
+                    <button
+                      disabled={loading}
+                      onClick={() => handleBuyNumber({ id: lastFailedAttempt.serverId, name: lastFailedAttempt.serverName, price: lastFailedAttempt.price })}
+                      className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl flex items-center justify-center gap-1.5 shadow font-black cursor-pointer disabled:opacity-50"
+                    >
+                      <RotateCcw size={15} className={loading ? 'animate-spin' : ''} />
+                      🔄 إعادة المحاولة فوراً بنفس السيرفر
+                    </button>
+                    <button
+                      disabled={loading}
+                      onClick={handleAutoScan}
+                      className="w-full py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center gap-1.5 shadow font-bold cursor-pointer disabled:opacity-50"
+                    >
+                      <Zap size={15} />
+                      ⚡ فحص جميع السيرفرات تلقائياً
+                    </button>
+                  </div>
+                  <div className="pt-1">
+                    <button
+                      disabled={loading}
+                      onClick={handleDemoBuy}
+                      className="w-full py-2 bg-purple-900/60 hover:bg-purple-800/60 border border-purple-500/40 text-purple-200 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-bold cursor-pointer"
+                    >
+                      🧪 تجربة رقم فوري للتحقق من وصول الكود وعمل البوت
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Table Header matching Screenshot 1 */}
               <div className="grid grid-cols-2 gap-2 text-center text-xs font-black text-slate-300 py-1 bg-slate-900/60 rounded-xl border border-slate-800">
@@ -958,24 +1127,63 @@ export default function PlusTelegramSimulator({
                 <span>السعر ₽ 🎲</span>
               </div>
 
-              {/* Numbered Servers Grid (Matching Screenshot 1) */}
+              {/* Numbered Real Servers Grid */}
               <div className="space-y-2">
-                {(serversPerCountry[selectedCountry.key] || serversPerCountry['default']).map((srv, idx) => (
-                  <button
-                    key={idx}
-                    disabled={loading}
-                    onClick={() => handleBuyNumber(srv)}
-                    className="w-full grid grid-cols-2 gap-2 py-3 px-4 bg-[#242f3d] hover:bg-[#2f3d4f] border border-slate-700 rounded-xl transition-all font-bold text-xs cursor-pointer shadow-sm disabled:opacity-50"
-                  >
-                    <span className="text-right text-white font-bold">{srv.name}</span>
-                    <span className="text-left font-mono text-emerald-400 font-black">₽{srv.price}</span>
-                  </button>
-                ))}
+                {(() => {
+                  const currentCountryPrice = customPrices[selectedApp.key]?.[selectedCountry.key]?.priceRub || 15;
+                  const linkedServerId = customPrices[selectedApp.key]?.[selectedCountry.key]?.serverId;
+                  const activeServers = servers.length > 0 ? servers : [
+                    { id: 'srv-kahlani', name: 'سلفر الكحلاني (عشوائي)' },
+                    { id: 'hero-sms', name: 'سيرفر HeroSMS المعتمد (#1513844)' },
+                    { id: 'mustafa-5sim', name: 'سيرفر مصطفى (5SIM.NET)' }
+                  ];
+
+                  return (
+                    <>
+                      {activeServers.map((srv, idx) => {
+                        const isLinked = srv.id === linkedServerId || (!linkedServerId && srv.id === 'srv-kahlani');
+                        return (
+                          <button
+                            key={srv.id || idx}
+                            disabled={loading}
+                            onClick={() => handleBuyNumber({ id: srv.id, name: srv.name, price: currentCountryPrice })}
+                            className={`w-full grid grid-cols-2 gap-2 py-3 px-4 rounded-xl transition-all font-bold text-xs cursor-pointer shadow-sm disabled:opacity-50 border ${
+                              isLinked 
+                                ? 'bg-blue-950/60 hover:bg-blue-900/60 border-blue-500/60 text-white ring-1 ring-blue-500/30' 
+                                : 'bg-[#242f3d] hover:bg-[#2f3d4f] border-slate-700 text-white'
+                            }`}
+                          >
+                            <span className="text-right flex items-center gap-1.5 truncate">
+                              {isLinked && <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold shrink-0">المربوط</span>}
+                              <span className="truncate">{srv.name}</span>
+                            </span>
+                            <span className="text-left font-mono text-emerald-400 font-black">₽{currentCountryPrice}</span>
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        disabled={loading}
+                        onClick={handleAutoScan}
+                        className="w-full py-3 px-4 bg-gradient-to-r from-blue-700/80 to-indigo-700/80 hover:from-blue-600 hover:to-indigo-600 border border-blue-500/40 rounded-xl transition-all font-bold text-xs cursor-pointer shadow text-white flex items-center justify-between"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Zap size={16} className="text-amber-400" />
+                          <span>⚡ التبديل التلقائي الذكي (يفحص جميع السيرفرات بالترتيب)</span>
+                        </span>
+                        <span className="font-mono text-emerald-300 font-black">₽{currentCountryPrice}</span>
+                      </button>
+                    </>
+                  );
+                })()}
               </div>
 
               <button
-                onClick={() => setScreen('arab_countries')}
-                className="w-full py-2 bg-slate-800 text-slate-300 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold"
+                onClick={() => {
+                  setLastFailedAttempt(null);
+                  setScreen('arab_countries');
+                }}
+                className="w-full py-2 bg-slate-800 text-slate-300 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer"
               >
                 <ArrowRight size={14} />
                 *.. ↩ عودة ✤
@@ -1283,15 +1491,30 @@ export default function PlusTelegramSimulator({
                   className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow"
                 >
                   <RotateCcw size={16} />
-                  ✤ ↺* إعادة المحاولة •
+                  ✤ ↺* إعادة المحاولة مباشرة من قائمة السيرفرات •
+                </button>
+
+                <button
+                  onClick={handleAutoScan}
+                  className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer font-black"
+                >
+                  <Zap size={15} />
+                  ⚡ فحص وتجربة جميع السيرفرات تلقائياً
+                </button>
+
+                <button
+                  onClick={handleDemoBuy}
+                  className="w-full py-2 bg-purple-900/60 hover:bg-purple-800/60 border border-purple-500/40 text-purple-200 rounded-xl flex items-center justify-center gap-1.5 text-[11px] cursor-pointer"
+                >
+                  🧪 تجربة رقم فوري للتحقق من وصول الكود وعمل البوت
                 </button>
 
                 <button
                   onClick={() => setScreen('arab_countries')}
-                  className="w-full py-2.5 bg-slate-800 text-slate-300 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-2 bg-slate-800 text-slate-300 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <ArrowRight size={14} />
-                  *.. ↩ عودة ✤
+                  *.. ↩ اختيار دولة أخرى ✤
                 </button>
               </div>
             </div>
@@ -1486,8 +1709,8 @@ export default function PlusTelegramSimulator({
             <div className="space-y-3 animate-in fade-in duration-200">
               <div className="bg-[#1e2a38] border border-amber-500/40 rounded-2xl p-4 text-xs space-y-2 leading-relaxed">
                 <div className="font-black text-amber-400 text-sm border-b border-slate-700 pb-2 flex items-center justify-between">
-                  <span>👑 لوحة تحكم الأدمن والمالك الشاملة</span>
-                  <span className="font-mono text-[10px] text-slate-400">8338869162</span>
+                  <span>👑 لوحة أدوات وإدارة السيرفرات والأسعار</span>
+                  <span className="font-mono text-[10px] text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">ONLINE 🟢</span>
                 </div>
                 <p className="text-slate-300 text-[11px]">
                   تحكم كامل ومباشر بجميع وظائف البوت مع مزامنة فورية 100%:

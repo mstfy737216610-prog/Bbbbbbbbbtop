@@ -50,7 +50,7 @@
   },
   {
     "id": "srv-activate",
-    "name": "سيرفر SMS-Activate السريع",
+    "name": "سيرفر SMS-Activate الاحتياطي",
     "url": "https://api.sms-activate.org/stubs/handler_api.php",
     "apiKey": "ACTIVATE_GLOBAL_KEY",
     "apiType": "stubs",

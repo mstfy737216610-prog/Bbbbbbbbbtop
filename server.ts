@@ -2734,11 +2734,11 @@ class TelegramBotRunner {
       for (let i = 0; i < entries.length; i += 2) {
         const row: any[] = [];
         const [c1, info1] = entries[i];
-        row.push({ text: `${info1.name} ¦ ${info1.priceRub} ₽`, callback_data: `buy_${service}_${c1}_${info1.priceRub}` });
+        row.push({ text: `${info1.name} ¦ ${info1.priceRub} ₽`, callback_data: `srvsel_${service}_${c1}` });
 
         if (i + 1 < entries.length) {
           const [c2, info2] = entries[i + 1];
-          row.push({ text: `${info2.name} ¦ ${info2.priceRub} ₽`, callback_data: `buy_${service}_${c2}_${info2.priceRub}` });
+          row.push({ text: `${info2.name} ¦ ${info2.priceRub} ₽`, callback_data: `srvsel_${service}_${c2}` });
         }
         keyboard.push(row);
       }
@@ -2752,6 +2752,75 @@ class TelegramBotRunner {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: keyboard }
       });
+      return;
+    }
+
+    // 14.5 Server Selection Screen Per Country (Direct In-Bot Server Picking)
+    if (data.startsWith('srvsel_')) {
+      const parts = data.split('_'); // srvsel, service, country
+      const service = parts[1] || 'whatsapp';
+      const country = parts[2] || 'albania';
+      const countryConfig = customPrices[service]?.[country];
+      const countryName = countryConfig?.name || country;
+      const priceRub = countryConfig?.priceRub || 15.0;
+      const linkedServerId = countryConfig?.serverId || 'srv-kahlani';
+
+      const srvText = `📱 *شراء رقم جديد ✅*\n\n` +
+        `• *التطبيق:* *${service === 'whatsapp' ? 'واتس اب - WHATSAPP' : 'تيليجرام - TELEGRAM'}*\n` +
+        `• *الدولة:* *${countryName}*\n` +
+        `• *السعر المعتمد:* *${priceRub} ₽*\n` +
+        `• *رصيدك الحالي:* *${user.balance} ₽*\n\n` +
+        `🧩 *قم باختيار السيرفر المطلوب لسحب الرقم:*\n` +
+        `يختلف التوفر وجودة الأرقام من سيرفر لآخر ✔️`;
+
+      const keyboard: any[] = [];
+
+      // Render actual customServers
+      const activeServers = customServers && customServers.length > 0 ? customServers : [
+        { id: 'srv-kahlani', name: 'سلفر الكحلاني (عشوائي)' },
+        { id: 'hero-sms', name: 'سيرفر HeroSMS المعتمد (#1513844)' },
+        { id: 'srv-1', name: 'سيرفر مصطفى (5SIM.NET)' }
+      ];
+
+      activeServers.forEach(srv => {
+        const isLinked = srv.id === linkedServerId;
+        keyboard.push([
+          {
+            text: `${srv.name} ¦ ${priceRub} ₽ ${isLinked ? '⭐ (المربوط)' : ''}`,
+            callback_data: `buy_${service}_${country}_${priceRub}_${srv.id}`
+          }
+        ]);
+      });
+
+      // Quick Auto-Scan option
+      keyboard.push([
+        {
+          text: '⚡ تجربة السيرفرات تلقائياً (Auto-Scan)',
+          callback_data: `buy_${service}_${country}_${priceRub}_auto`
+        }
+      ]);
+
+      keyboard.push([
+        { text: '🔙 اختيار دولة أخرى', callback_data: `app_${service}` },
+        { text: '🏡 القائمة الرئيسية', callback_data: 'main_menu' }
+      ]);
+
+      if (messageId) {
+        await this.sendApi('editMessageText', {
+          chat_id: chatId,
+          message_id: messageId,
+          text: srvText,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: keyboard }
+        });
+      } else {
+        await this.sendApi('sendMessage', {
+          chat_id: chatId,
+          text: srvText,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: keyboard }
+        });
+      }
       return;
     }
 
@@ -2829,19 +2898,38 @@ class TelegramBotRunner {
 
       // Call Linked Server API
       let realResult: any;
-      if (targetServerId === 'hero-sms' || targetServerId === 'srv-kahlani') {
+      if (targetServerId === 'auto') {
+        providerDisplayName = 'الفحص التلقائي الذكي (Auto-Scan)';
+        // 1. Try Kahlani / HeroSMS
+        realResult = await buyHeroSmsNumber(country, service);
+        if (realResult.success) {
+          providerDisplayName = 'سلفر الكحلاني (عشوائي)';
+        } else {
+          // 2. Try 5SIM
+          realResult = await buy5SimRealNumber(country, service);
+          if (realResult.success) {
+            providerDisplayName = 'سيرفر مصطفى (5SIM.NET)';
+          }
+        }
+      } else if (targetServerId === 'hero-sms' || targetServerId === 'srv-kahlani') {
         realResult = await buyHeroSmsNumber(country, service);
         if (!realResult.success && (realResult.error === 'NO_NUMBERS' || realResult.error?.includes('KEY'))) {
           // Automatic seamless fallback to 5SIM so user doesn't get empty result
           const backupRes = await buy5SimRealNumber(country, service);
-          if (backupRes.success) realResult = backupRes;
+          if (backupRes.success) {
+            realResult = backupRes;
+            providerDisplayName = 'سيرفر مصطفى (5SIM.NET) - بديل سريع';
+          }
         }
       } else {
         realResult = await buy5SimRealNumber(country, service);
         if (!realResult.success && realResult.error === 'NO_NUMBERS') {
           // Automatic seamless fallback to HeroSMS
           const backupRes = await buyHeroSmsNumber(country, service);
-          if (backupRes.success) realResult = backupRes;
+          if (backupRes.success) {
+            realResult = backupRes;
+            providerDisplayName = 'سيرفر HeroSMS - بديل سريع';
+          }
         }
       }
 
@@ -2865,10 +2953,14 @@ class TelegramBotRunner {
             { text: '👑 تجربة بـ HeroSMS (#1513844)', callback_data: `buy_${service}_${country}_${priceRub}_hero-sms` }
           ],
           [
-            { text: '💎 تجربة بـ 5SIM.NET (مصطفى)', callback_data: `buy_${service}_${country}_${priceRub}_srv-1` }
+            { text: '💎 تجربة بـ 5SIM.NET (مصطفى)', callback_data: `buy_${service}_${country}_${priceRub}_srv-1` },
+            { text: '⚡ فحص السيرفرات تلقائياً', callback_data: `buy_${service}_${country}_${priceRub}_auto` }
           ],
           [
-            { text: '🔙 اختيار دولة أخرى', callback_data: `app_${service}` },
+            { text: '🔙 اختيار سيرفر آخر', callback_data: `srvsel_${service}_${country}` },
+            { text: '🌍 قائمة الدول', callback_data: `app_${service}` }
+          ],
+          [
             { text: '🏡 القائمة الرئيسية', callback_data: 'main_menu' }
           ]
         ];
@@ -3398,9 +3490,10 @@ app.get('/api/store/profile', async (req, res) => {
 
 app.post('/api/providers/buy-number', async (req, res) => {
   const { service, country, serverId } = req.body;
+  const srvTarget = serverId || 'srv-kahlani';
 
-  // If user selected HeroSMS or Kahlani server
-  if (serverId === 'hero-sms' || serverId === 'srv-kahlani') {
+  // 1. Kahlani server
+  if (srvTarget === 'srv-kahlani') {
     const heroResult = await buyHeroSmsNumber(country || 'colombia', service || 'telegram');
     if (heroResult.success && heroResult.phone) {
       return res.json({
@@ -3411,33 +3504,140 @@ app.post('/api/providers/buy-number', async (req, res) => {
         country: country || 'colombia',
         costUsd: 0.15,
         finalPrice: 15.0,
-        provider: serverId === 'srv-kahlani' ? 'سيرفر الكحلاني (عشوائي)' : 'سيرفر HeroSMS (#1513844)'
+        provider: 'سلفر الكحلاني (عشوائي)'
       });
     }
   }
 
-  // Default / Fallback to 5SIM
-  const result = await buy5SimRealNumber(country || 'colombia', service || 'telegram');
-  if (result.success && result.phone) {
+  // 2. HeroSMS server
+  if (srvTarget === 'hero-sms') {
+    const heroResult = await buyHeroSmsNumber(country || 'colombia', service || 'telegram');
+    if (heroResult.success && heroResult.phone) {
+      return res.json({
+        success: true,
+        id: heroResult.id,
+        phone: heroResult.phone,
+        service: service || 'telegram',
+        country: country || 'colombia',
+        costUsd: 0.15,
+        finalPrice: 15.0,
+        provider: 'سيرفر HeroSMS المعتمد (#1513844)'
+      });
+    }
+  }
+
+  // 3. 5SIM Server
+  if (srvTarget === 'srv-1' || srvTarget === 'mustafa-5sim') {
+    const result = await buy5SimRealNumber(country || 'colombia', service || 'telegram');
+    if (result.success && result.phone) {
+      return res.json({
+        success: true,
+        id: result.id,
+        phone: result.phone,
+        service: service || 'telegram',
+        country: country || 'colombia',
+        costUsd: result.costUsd,
+        finalPrice: 15.0,
+        provider: 'سيرفر مصطفى (5SIM.NET)'
+      });
+    }
+  }
+
+  // 4. Auto-Scan across servers
+  if (srvTarget === 'auto') {
+    const heroResult = await buyHeroSmsNumber(country || 'colombia', service || 'telegram');
+    if (heroResult.success && heroResult.phone) {
+      return res.json({
+        success: true,
+        id: heroResult.id,
+        phone: heroResult.phone,
+        service: service || 'telegram',
+        country: country || 'colombia',
+        costUsd: 0.15,
+        finalPrice: 15.0,
+        provider: 'سلفر الكحلاني (عشوائي)'
+      });
+    }
+    const result = await buy5SimRealNumber(country || 'colombia', service || 'telegram');
+    if (result.success && result.phone) {
+      return res.json({
+        success: true,
+        id: result.id,
+        phone: result.phone,
+        service: service || 'telegram',
+        country: country || 'colombia',
+        costUsd: result.costUsd,
+        finalPrice: 15.0,
+        provider: 'سيرفر مصطفى (5SIM.NET)'
+      });
+    }
+  }
+
+  // If specific server was picked and had no numbers, also try 5SIM as automatic safety fallback
+  const fallbackResult = await buy5SimRealNumber(country || 'colombia', service || 'telegram');
+  if (fallbackResult.success && fallbackResult.phone) {
     return res.json({
       success: true,
-      id: result.id,
-      phone: result.phone,
+      id: fallbackResult.id,
+      phone: fallbackResult.phone,
       service: service || 'telegram',
       country: country || 'colombia',
-      costUsd: result.costUsd,
+      costUsd: fallbackResult.costUsd,
       finalPrice: 15.0,
-      provider: 'سيرفر مصطفى (5SIM.NET)'
+      provider: 'سيرفر مصطفى (5SIM.NET) - بديل تلقائي'
     });
   }
+
   return res.json({
     success: false,
-    message: result.error === 'NO_NUMBERS' ? 'لم يتم تنفيذ طلبك نظراً لعدم توفر أرقام حالياً في الموقع لهذه الدولة.' : (result.error || 'فشل الاتصال بالمزود')
+    message: 'لا تتوفر أرقام حالياً في هذا السيرفر لهذه الدولة. يرجى تجربة سيرفر آخر أو إعادة المحاولة.'
+  });
+});
+
+// Demo Number Test Endpoint (For Instant Live Testing Without Friction)
+app.post('/api/providers/buy-demo-number', (req, res) => {
+  const { service, country, countryName, prefix } = req.body;
+  const pfx = prefix ? prefix.replace(/[^\d+]/g, '') : '+965';
+  const randomSuffix = Math.floor(10000000 + Math.random() * 89999999);
+  const demoPhone = `${pfx}${randomSuffix}`;
+  const demoId = `DEMO-${Date.now()}`;
+
+  activeOrdersDb[demoId] = {
+    id: demoId,
+    userId: 'demo-user',
+    phone: demoPhone,
+    country: countryName || country || 'الكويت',
+    service: service || 'whatsapp',
+    operator: 'fast-demo',
+    costUsd: 0.10,
+    priceRub: 15.0,
+    status: 'PENDING',
+    createdAt: Date.now(),
+    provider: 'سيرفر التجربة الفورية'
+  };
+  saveJson('active_orders.json', activeOrdersDb);
+
+  res.json({
+    success: true,
+    id: demoId,
+    phone: demoPhone,
+    service: service || 'whatsapp',
+    country: countryName || country || 'الكويت',
+    finalPrice: 15.0,
+    provider: 'سيرفر التجربة الفورية'
   });
 });
 
 app.get('/api/providers/check-code', async (req, res) => {
   const orderId = req.query.orderId as string;
+  if (orderId && orderId.startsWith('DEMO-')) {
+    const demoCode = '582' + Math.floor(100 + Math.random() * 899);
+    return res.json({
+      status: 'RECEIVED',
+      code: demoCode,
+      fullSms: `كود تفعيل حسابك هو: ${demoCode}. لا تشاركه مع أي شخص.`
+    });
+  }
   const result = await check5SimRealCode(orderId);
   return res.json(result);
 });
