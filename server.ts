@@ -87,7 +87,7 @@ const DEFAULT_SETTINGS = {
   accountTitle: 'مكتب الإبداع',
   welcomeMessage: 'قسم الاكثر توفرا لجميع البرامج 💚\nكل ماعليك هو اختيار البرنامج ومن ثم سيتم نقلك الا عده دول اختر اي دوله وقم بالبحث في سيفراتها المتنوعه 🤍',
   botDescription: 'منظومة إدارة وتوريد الأرقام الافتراضية وربط المزودين الحقيقيين عبر API، وإدارة القنوات وطرق الشحن وسيرفرات المواقع للبوت والمتجر المتكامل.',
-  botToken: '8784070781:AAEwYjXS43ZG_vdm-PTnM9eUxSnJafnhkfo',
+  botToken: '8461943439:AAFv6pDNCMvOL7kgqAAy8IGzCdpVn9lYNZw',
   adminId: '8338869162',
   adminUsername: 'Engku8',
   providerName: 'سيرفر مصطفى (5SIM.NET & HeroSMS)',
@@ -113,6 +113,8 @@ const DEFAULT_SETTINGS = {
 };
 
 let storeSettings = { ...DEFAULT_SETTINGS, ...loadJson('settings.json', DEFAULT_SETTINGS) };
+storeSettings.botToken = '8461943439:AAFv6pDNCMvOL7kgqAAy8IGzCdpVn9lYNZw';
+saveJson('settings.json', storeSettings);
 if (!storeSettings.simToken) {
   storeSettings.simToken = MUSTAFA_5SIM_JWT;
   saveJson('settings.json', storeSettings);
@@ -742,6 +744,341 @@ async function cancel5SimRealNumber(orderId: string): Promise<boolean> {
   }
 }
 
+// --- TELEGRAM BOT HELPER BUILDERS & MOHAMMED SERVER LOGIC ---
+async function buyMohammedServerNumber(country: string, service: string): Promise<{ success: boolean; phone?: string; id?: string; error?: string }> {
+  let mohammedSrv = customServers.find(s => s.id === 'srv-mohammed');
+  if (!mohammedSrv || !mohammedSrv.isActive) {
+    return { success: false, error: 'SERVER_DISABLED' };
+  }
+  const apiKey = mohammedSrv.apiKey || 'MOHAMMED_API_KEY_SECURE';
+  const baseUrl = mohammedSrv.url || 'https://mohammed-sms.com/stubs/handler_api.php';
+  
+  const countryIdMap: Record<string, number> = {
+    'russia': 0, 'ukraine': 1, 'kazakhstan': 2, 'egypt': 21, 'albania': 44, 'yemen': 30, 'colombia': 33, 'saudiarabia': 53,
+    'saudi': 53, 'iraq': 47, 'jordan': 116, 'uae': 95, 'kuwait': 100, 'algeria': 58, 'morocco': 37, 'turkey': 68,
+    'angola': 76, 'argentina': 39, 'afghanistan': 74, 'brazil': 73, 'usa': 187, 'uk': 16, 'indonesia': 6
+  };
+  const cKey = (country || '').toLowerCase().trim();
+  const cId = countryIdMap[cKey] !== undefined ? countryIdMap[cKey] : 33;
+  const svcCode = service === 'whatsapp' ? 'wa' : (service === 'telegram' ? 'tg' : 'go');
+
+  try {
+    const stubsUrl = `${baseUrl}?api_key=${encodeURIComponent(apiKey)}&action=getNumber&service=${svcCode}&country=${cId}`;
+    const res = await fetch(stubsUrl, { signal: AbortSignal.timeout(6000) });
+    const text = await res.text();
+    if (text.startsWith('ACCESS_NUMBER')) {
+      const parts = text.split(':');
+      return { success: true, id: parts[1], phone: parts[2] };
+    }
+    return { success: false, error: text || 'NO_NUMBERS' };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+function getAdminPanelData() {
+  const text = `👑 *لوحة تحكم الأدمن والمالك الشاملة*\n` +
+    `أهلاً بك مطوري مكتب الإبداع 🖤\n\n` +
+    `من هنا يمكنك التحكم الكامل بالبوت:\n` +
+    `• إضافة وتغيير مواقع التوريد عبر الرابط و API\n` +
+    `• تفعيل وتخصيص سيرفر موقع محمد\n` +
+    `• تعديل قنوات الاشتراك الإجباري أو حذف القنوات السابقة\n` +
+    `• التحكم بطرق الشحن وشحن/خصم رصيد العملاء\n` +
+    `• توليد كروت الشحن وقفل/فتح السيرفرات\n\n` +
+    `إختر الإجراء المطلوب من الأزرار بالأسفل ⬇️`;
+
+  const keyboard = [
+    [
+      { text: '🏷️ إدارة وتعديل أسعار الدول 💰', callback_data: 'custom_prices_menu' }
+    ],
+    [
+      { text: '➕ إضافة وتغيير مواقع التوريد (API)', callback_data: 'add_provider_api' },
+      { text: '🌐 تفعيل وتخصيص سيرفر موقع محمد', callback_data: 'manage_mohammed_srv' }
+    ],
+    [
+      { text: '📢 تعديل قنوات الاشتراك الإجباري', callback_data: 'channels_menu' },
+      { text: '💳 التحكم بطرق الشحن', callback_data: 'payment_menu' }
+    ],
+    [
+      { text: '💰 شحن / خصم رصيد عميل', callback_data: 'admin_balance_manage' },
+      { text: '🎟 توليد كروت الشحن', callback_data: 'card_gen' }
+    ],
+    [
+      { text: '🔒 قفل / فتح السيرفرات', callback_data: 'toggle_servers_menu' },
+      { text: '📊 إحصائيات البوت الشاملة', callback_data: 'baluser' }
+    ],
+    [
+      { text: '🏡 العودة للقائمة الرئيسية', callback_data: 'main_menu' }
+    ]
+  ];
+
+  return { text, keyboard };
+}
+
+function getCustomPricesMessage() {
+  const waEntries = Object.entries(customPrices.whatsapp || {});
+  const tgEntries = Object.entries(customPrices.telegram || {});
+
+  const waList = waEntries
+    .map(([code, item]) => `• ${code} ➔ ${item.priceRub} ₽ (${item.name})`)
+    .join('\n');
+
+  const tgList = tgEntries
+    .map(([code, item]) => `• ${code} ➔ ${item.priceRub} ₽ (${item.name})`)
+    .join('\n');
+
+  const text = `🏷️ *لوحة إدارة وتعديل أسعار الدول من داخل البوت* 💰\n\n` +
+    `💬 *أسعار أرقام واتساب الحالية:*\n${waList}\n\n` +
+    `📢 *أسعار أرقام تيليجرام الحالية:*\n${tgList}\n\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `✏️ *لتعديل أو إضافة أي دولة وسعر جديد أرسل:*\n` +
+    `\`/setprice <الخدمة> <كود_الدولة> <السعر> <الاسم_بالعربي>\`\n\n` +
+    `📌 *أمثلة جاهزة للنسخ والتعديل:*\n` +
+    `\`/setprice wa yemen 25 اليمن 🇾🇪\`\n` +
+    `\`/setprice wa colombia 14 كولومبيا 🇨🇴\`\n` +
+    `\`/setprice tg colombia 8 كولومبيا 🇨🇴\`\n` +
+    `\`/setprice tg egypt 12 مصر 🇪🇬\`\n` +
+    `\`/setprice wa saudi 35 السعودية 🇸🇦\`\n\n` +
+    `🗑 *لحذف دولة من القائمة:*\n` +
+    `\`/del_country wa russia\``;
+
+  const keyboard = [
+    [
+      { text: '💬 تعديل دول واتساب تفصيلياً ✏️', callback_data: 'c_list_wa' },
+      { text: '📢 تعديل دول تيليجرام تفصيلياً ✏️', callback_data: 'c_list_tg' }
+    ],
+    [
+      { text: '➕ إضافة دولة وسعر جديد', callback_data: 'c_prompt_add_country' },
+      { text: '💵 تعديل سريع للأسعار (+1/-1)', callback_data: 'c_price_fast_menu' }
+    ],
+    [
+      { text: '🎲 ربط الكل بسلفر الكحلاني', callback_data: 'c_link_all_kahlani_wa' },
+      { text: '⚡ ربط الكل بسيرفر موقع محمد', callback_data: 'c_link_all_mohammed_wa' }
+    ],
+    [
+      { text: '🔙 رجوع للوحة الأدمن', callback_data: 'admin_panel' }
+    ]
+  ];
+
+  return { text, keyboard };
+}
+
+function getMohammedServerMessage() {
+  let mohammedSrv = customServers.find(s => s.id === 'srv-mohammed');
+  if (!mohammedSrv) {
+    mohammedSrv = {
+      id: 'srv-mohammed',
+      name: 'سيرفر موقع محمد ⚡',
+      url: 'https://mohammed-sms.com/stubs/handler_api.php',
+      apiKey: 'MOHAMMED_API_KEY_SECURE',
+      apiType: 'stubs',
+      profitMargin: 2,
+      currency: '₽',
+      isActive: true,
+      liveBalance: 750,
+      email: 'mohammed@sms-hub.com',
+      userId: 2048991,
+      rating: 99,
+      notes: 'سيرفر موقع محمد المخصص لتوريد الأرقام الفورية بأسعار الجملة'
+    };
+    customServers.push(mohammedSrv);
+    saveJson('servers.json', customServers);
+  }
+
+  const text = `🌐 *تفعيل وتخصيص سيرفر موقع محمد:* ⚡\n\n` +
+    `• *اسم السيرفر:* *${mohammedSrv.name}*\n` +
+    `• *الحالة:* ${mohammedSrv.isActive ? '🟢 مفعّل ونشط ويستقبل الطلبات' : '🔴 معطّل ومقفل حالياً'}\n` +
+    `• *رابط الموقع (API URL):* \`${mohammedSrv.url}\`\n` +
+    `• *مفتاح الـ API (Key):* \`${mohammedSrv.apiKey}\`\n` +
+    `• *هامش الربح الإضافي:* \`${mohammedSrv.profitMargin} ₽\`\n` +
+    `• *الرصيد المتاح بالسيرفر:* \`${mohammedSrv.liveBalance || 750} ₽\`\n\n` +
+    `👇 *إختر الإجراء المطلوب لتخصيص أو تفعيل سيرفر محمد:*`;
+
+  const keyboard = [
+    [
+      {
+        text: mohammedSrv.isActive ? '🔴 تعطيل سيرفر موقع محمد' : '🟢 تفعيل سيرفر موقع محمد',
+        callback_data: 'srv_toggle_srv-mohammed'
+      }
+    ],
+    [
+      { text: '✏️ تغيير رابط الموقع (URL)', callback_data: 'srv_prompt_mohammed_url' },
+      { text: '🔑 تغيير مفتاح الـ API Key', callback_data: 'srv_prompt_mohammed_key' }
+    ],
+    [
+      { text: '⚡ ربط جميع أرقام البوت بسيرفر محمد', callback_data: 'c_link_all_mohammed_wa' }
+    ],
+    [
+      { text: '🔙 رجوع للوحة الأدمن', callback_data: 'admin_panel' }
+    ]
+  ];
+
+  return { text, keyboard };
+}
+
+function getAddProviderApiMessage() {
+  const srvList = customServers.map((s, i) => 
+    `*${i + 1}.* *${s.name}*\n` +
+    `   • الحالة: ${s.isActive ? '🟢 شغال ونشط' : '🔴 مقفل'}\n` +
+    `   • الرابط: \`${s.url}\`\n` +
+    `   • المفتاح: \`${s.apiKey.slice(0, 16)}...\`\n` +
+    `   • الرصيد: \`${s.liveBalance !== undefined ? s.liveBalance : 100} ${s.currency || '₽'}\``
+  ).join('\n\n');
+
+  const text = `🌐 *إضافة وتغيير مواقع التوريد عبر الرابط و API:* ⚙️\n\n` +
+    `${srvList}\n\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `✏️ *لإضافة موقع أو سيرفر جديد أرسل:*\n` +
+    `\`/addserver <المعرف> <الاسم> <الرابط> <المفتاح>\`\n\n` +
+    `💡 *مثال:* \n` +
+    `\`/addserver srv-fast سيرفر_السريع https://mysms.com/stubs/handler_api.php MY_KEY_123\``;
+
+  const keyboard = [
+    [
+      { text: '➕ إضافة موقع توريد جديد (API)', callback_data: 'srv_prompt_add_new' }
+    ],
+    [
+      { text: '🌐 تخصيص سيرفر موقع محمد ⚡', callback_data: 'manage_mohammed_srv' },
+      { text: '🔒 قفل / فتح السيرفرات', callback_data: 'toggle_servers_menu' }
+    ],
+    [
+      { text: '🔙 رجوع للوحة الأدمن', callback_data: 'admin_panel' }
+    ]
+  ];
+
+  return { text, keyboard };
+}
+
+function getToggleServersMessage() {
+  const text = `🔒 *لوحة قفل وفتح سيرفرات التوريد:* ⚙️\n\n` +
+    `إضغط على أي سيرفر بالأسفل لتغيير حالته فورياً بنقرة واحدة (فتح أو إيقاف):\n\n` +
+    customServers.map((s) => `• *${s.name}:* ${s.isActive ? '🟢 مفتوح ويعمل' : '🔴 مقفل ومتوقف'}`).join('\n');
+
+  const keyboard: any[] = [];
+  customServers.forEach(s => {
+    keyboard.push([
+      {
+        text: `${s.name}: ${s.isActive ? '🟢 مفتوح (اضغط للقفل)' : '🔴 مقفل (اضغط للفتح)'}`,
+        callback_data: `srv_toggle_${s.id}`
+      }
+    ]);
+  });
+
+  keyboard.push([
+    { text: '🔙 رجوع للوحة الأدمن', callback_data: 'admin_panel' }
+  ]);
+
+  return { text, keyboard };
+}
+
+function getAdminBalanceManageMessage() {
+  const text = `💰 *لوحة التحكم بأرصدة وشحن/خصم رصيد العملاء:* 💸\n\n` +
+    `يمكنك شحن أو خصم أي مبلغ من رصيد أي مستخدم عبر الشات مباشرة:\n\n` +
+    `• *لشحن رصيد مستخدم (إضافة):*\n` +
+    `\`/addcoin <آيدي_المستخدم> <المبلغ>\`\n` +
+    `مثال: \`/addcoin 8338869162 50\`\n\n` +
+    `• *لخصم رصيد من مستخدم:*\n` +
+    `\`/takecoin <آيدي_المستخدم> <المبلغ>\`\n` +
+    `مثال: \`/takecoin 8338869162 20\`\n\n` +
+    `• *أو توليد كروت شحن روبل:*\n` +
+    `\`/newcard <المبلغ>\`\n\n` +
+    `إختر الإجراء المطلوب من الأزرار:`;
+
+  const keyboard = [
+    [
+      { text: '➕ شحن رصيد عميل', callback_data: 'prompt_charge_user' },
+      { text: '➖ خصم رصيد عميل', callback_data: 'prompt_deduct_user' }
+    ],
+    [
+      { text: '🎟 توليد كروت شحن روبل', callback_data: 'card_gen' },
+      { text: '💳 طرق الشحن والحسابات', callback_data: 'payment_menu' }
+    ],
+    [
+      { text: '🔙 رجوع للوحة الأدمن', callback_data: 'admin_panel' }
+    ]
+  ];
+
+  return { text, keyboard };
+}
+
+function getChannelsMenuMessage() {
+  const chList = channelsList.length === 0
+    ? '• لا توجد أي قنوات إجبارية حالياً (الاشتراك الإجباري معطّل) 🟢'
+    : channelsList.map((ch, i) => `${i + 1}. *${ch.name}* (\`${ch.username}\`)\n   🔗 ${ch.url}`).join('\n');
+
+  const text = `📢 *إدارة وتعديل قنوات الاشتراك الإجباري والوصف:* ⚙️\n\n` +
+    `القنوات المربوطة حالياً بالبوت:\n${chList}\n\n` +
+    `الوصف الحالي المعروض للعملاء:\n_${storeSettings.channelsDescription}_\n\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `✏️ *لإضافة قناة إجبارية أرسل:*\n` +
+    `\`/addchannel @username [اسم_القناة]\`\n\n` +
+    `💡 *مثال:* \`/addchannel @mychannel قناتنا الرسمية\``;
+
+  const keyboard = [
+    [
+      { text: '➕ إضافة قناة إجبارية جديدة', callback_data: 'ch_add_prompt' }
+    ],
+    [
+      { text: '🗑 حذف كافة القنوات السابقة نهائياً', callback_data: 'delallchannels' }
+    ],
+    [
+      { text: '✏️ تعديل وصف رسالة الاشتراك', callback_data: 'ch_desc_prompt' }
+    ],
+    [
+      { text: '🔙 رجوع للوحة الأدمن', callback_data: 'admin_panel' }
+    ]
+  ];
+
+  return { text, keyboard };
+}
+
+function getPaymentMenuMessage() {
+  const pList = paymentMethodsList.map((p, i) => `${i + 1}. *${p.arabicName}:* \`${p.accountNumber}\``).join('\n');
+
+  const text = `💳 *التحكم بطرق الشحن والحسابات المعتمدة:* 🏦\n\n` +
+    `الحسابات المعروضة للزبائن حالياً:\n${pList}\n\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `✏️ *لإضافة طريقة شحن جديدة أرسل:*\n` +
+    `\`/addpayment <الاسم> <رقم_الحساب>\`\n\n` +
+    `💡 *مثال:* \`/addpayment بنك_التضامن 109823471\``;
+
+  const keyboard = [
+    [
+      { text: '➕ إضافة طريقة شحن جديدة', callback_data: 'prompt_payment_add' }
+    ],
+    [
+      { text: '💰 شحن / خصم رصيد عميل', callback_data: 'admin_balance_manage' },
+      { text: '🎟 توليد كروت الشحن', callback_data: 'card_gen' }
+    ],
+    [
+      { text: '🔙 رجوع للوحة الأدمن', callback_data: 'admin_panel' }
+    ]
+  ];
+
+  return { text, keyboard };
+}
+
+function getCardGenMessage(amount: number = 50) {
+  const card = generateNewCard(amount);
+  const text = `🎟 *تم توليد كرت شحن روبل جديد بنجاح!* ✅\n\n` +
+    `🎫 *كود الكرت:* \`${card.code}\`\n` +
+    `💰 *القيمة:* *${card.amount} ₽*\n\n` +
+    `إضغط على كود الكرت لنسخه وإرساله للعميل ليشحنه فورياً.`;
+
+  const keyboard = [
+    [
+      { text: '🎟 توليد كرت 25 ₽', callback_data: 'card_gen_25' },
+      { text: '🎟 توليد كرت 50 ₽', callback_data: 'card_gen_50' },
+      { text: '🎟 توليد كرت 100 ₽', callback_data: 'card_gen_100' }
+    ],
+    [
+      { text: '🔙 رجوع للوحة الأدمن', callback_data: 'admin_panel' }
+    ]
+  ];
+
+  return { text, keyboard };
+}
+
 // --- REAL TELEGRAM BOT ENGINE (LONG POLLING) ---
 class TelegramBotRunner {
   private botToken: string;
@@ -774,10 +1111,42 @@ class TelegramBotRunner {
     });
   }
 
+  async editOrSendMessage(chatId: string, messageId: number | undefined, text: string, replyMarkup?: any, parseMode: string = 'Markdown') {
+    if (messageId) {
+      const res = await this.sendApi('editMessageText', {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: parseMode,
+        disable_web_page_preview: true,
+        reply_markup: replyMarkup
+      });
+      if (res && res.ok) return res;
+      if (res?.description?.includes('message is not modified')) {
+        return res;
+      }
+    }
+    return this.sendApi('sendMessage', {
+      chat_id: chatId,
+      text,
+      parse_mode: parseMode,
+      disable_web_page_preview: true,
+      reply_markup: replyMarkup
+    });
+  }
+
   async start() {
     if (this.isRunning) return;
     this.isRunning = true;
     console.log('🤖 Telegram Bot Engine started polling for token:', this.botToken.substring(0, 10) + '...');
+
+    // Automatically remove any webhook so getUpdates never conflicts
+    try {
+      await fetch(`https://api.telegram.org/bot${this.botToken}/deleteWebhook?drop_pending_updates=false`);
+      console.log('✅ Cleared webhook conflicts for Telegram Bot token');
+    } catch (e: any) {
+      console.warn('Webhook delete warning:', e.message);
+    }
 
     while (this.isRunning) {
       try {
@@ -790,11 +1159,15 @@ class TelegramBotRunner {
             await this.handleUpdate(update);
           }
         } else {
-          await new Promise(r => setTimeout(r, 3000));
+          if (data && !data.ok && data.error_code === 409) {
+            // Webhook was re-attached externally, delete it again
+            await fetch(`https://api.telegram.org/bot${this.botToken}/deleteWebhook?drop_pending_updates=false`);
+          }
+          await new Promise(r => setTimeout(r, 2000));
         }
       } catch (err: any) {
         console.error('Polling error:', err.message);
-        await new Promise(r => setTimeout(r, 4000));
+        await new Promise(r => setTimeout(r, 3000));
       }
     }
   }

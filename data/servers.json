@@ -15,6 +15,21 @@
     "notes": "سلفر الكحلاني المتكامل لتوريد الأرقام العشوائية والمباشرة"
   },
   {
+    "id": "srv-mohammed",
+    "name": "سيرفر موقع محمد ⚡",
+    "url": "https://mohammed-sms.com/stubs/handler_api.php",
+    "apiKey": "MOHAMMED_API_KEY_SECURE",
+    "apiType": "stubs",
+    "profitMargin": 2,
+    "currency": "₽",
+    "isActive": true,
+    "liveBalance": 750,
+    "email": "mohammed@sms-hub.com",
+    "userId": 2048991,
+    "rating": 99,
+    "notes": "سيرفر موقع محمد المخصص لتوريد الأرقام الفورية بأسعار الجملة"
+  },
+  {
     "id": "mustafa-5sim",
     "name": "سيرفر مصطفى (5SIM.NET #4437001)",
     "url": "https://5sim.net/v1",
