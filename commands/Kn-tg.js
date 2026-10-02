@@ -42,7 +42,7 @@ for (var i = 0; i < keys.length; i += 2) {
   var item1 = tg_countries[k1];
   row.push({
     text: item1.name + " ¦ " + item1.price + " ₽",
-    callback_data: "Xi tg " + k1 + " " + item1.price
+    callback_data: "select_server tg " + k1 + " " + item1.price
   });
 
   if (i + 1 < keys.length) {
@@ -50,7 +50,7 @@ for (var i = 0; i < keys.length; i += 2) {
     var item2 = tg_countries[k2];
     row.push({
       text: item2.name + " ¦ " + item2.price + " ₽",
-      callback_data: "Xi tg " + k2 + " " + item2.price
+      callback_data: "select_server tg " + k2 + " " + item2.price
     });
   }
   keyboard.push(row);

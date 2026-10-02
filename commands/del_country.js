@@ -37,7 +37,10 @@ if (stored_str) {
     if (prices[svc] && prices[svc][country]) {
       delete prices[svc][country];
       Bot.setProperty("prices_data_json", JSON.stringify(prices), "string");
-      Bot.sendMessage("🗑 *تم حذف دولة `" + country + "` من قائمة " + svc + " بنجاح!*", { parse_mode: "Markdown" });
+      Bot.sendInlineKeyboard([
+        [ { title: "🏷️ العودة لجدول الأسعار", command: "prices_menu" } ],
+        [ { title: "👑 لوحة الأدمن", command: "admin_panel" } ]
+      ], "🗑 *تم حذف دولة `" + country + "` من قائمة " + svc + " بنجاح!*");
       return;
     }
   } catch(e) {}

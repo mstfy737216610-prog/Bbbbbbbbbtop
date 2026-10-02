@@ -63,14 +63,20 @@ try {
   var no_bal = (err_raw.indexOf("not enough") !== -1 || err_raw.indexOf("balance") !== -1);
 
   if (no_num) {
-    var no_num_msg = "❌ *لم يتم تنفيذ الطلب*\n\n" +
-      "نظراً لعدم توفر أرقام حالياً في موقع التوريد لدولة *" + country + "* لتطبيق *" + service + "*.\n\n" +
-      "🛡 *لم يتم خصم أي قرش من رصيدك!*\n" +
-      "💡 جرب اختيار دولة أخرى متوفرة بكثرة مثل (كولومبيا 🇨🇴 أو مصر 🇪🇬 أو ألبانيا 🇦🇱).";
+    var cur_bal = parseFloat(Bot.getProperty("balance_" + uid) || User.getProperty("balance") || "0");
+    var no_num_msg = "❌ *لم يتم تنفيذ طلبك حالياً*\n\n" +
+      "نظراً لعدم توفر أرقام حالياً في هذا السيرفر لدولة *" + country + "* لتطبيق *" + service.toUpperCase() + "*.\n\n" +
+      "💰 *تم استرجاع رصيدك كاملاً لمحافظتك فوراً.*\n" +
+      "💷 رصيدك الحالي: *" + (isNaN(cur_bal) ? "0.0" : cur_bal.toFixed(1)) + " ₽*\n\n" +
+      "👇 *يمكنك إعادة المحاولة فوراً بنقرة واحدة أو تجربة سيرفر آخر مباشرة دون الخروج:*";
 
     Bot.sendInlineKeyboard([
-      [ { title: "☎️ اختيار دولة أخرى", command: "Buynum" } ],
-      [ { title: "🏡 القائمة الرئيسية", command: "/start" } ]
+      [ { title: "🔄 إعادة المحاولة فوراً (نفس السيرفر)", command: "Xi " + service + " " + country + " " + price + " 5sim" } ],
+      [ { title: "🎲 تجربة بسلفر الكحلاني فوراً", command: "Xi " + service + " " + country + " " + price + " srv-kahlani" } ],
+      [ { title: "👑 تجربة بـ HeroSMS فوراً", command: "Xi " + service + " " + country + " " + price + " hero-sms" } ],
+      [ { title: "⚡ فحص وتجربة السيرفرات تلقائياً", command: "Xi " + service + " " + country + " " + price + " auto" } ],
+      [ { title: "🧩 اختيار سيرفر آخر", command: "select_server " + service + " " + country + " " + price } ],
+      [ { title: "🔙 اختيار دولة أخرى", command: "Kn-" + (service === "whatsapp" ? "wa" : "tg") }, { title: "🏡 القائمة الرئيسية", command: "/start" } ]
     ], no_num_msg);
     return;
   }

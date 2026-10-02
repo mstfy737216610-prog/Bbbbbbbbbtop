@@ -89,19 +89,52 @@ var text = "🏷️ *لوحة إدارة وتعديل أسعار الدول من
   "`/del_country wa russia`\n" +
   "`/del_country tg ukraine`";
 
-var keyboard = [
-  [
-    { text: "➕ شرح وطريقة إضافة دولة جديدة", callback_data: "add_country" }
-  ],
-  [
-    { text: "💬 معاينة قائمة واتساب", callback_data: "Kn-wa" },
-    { text: "📢 معاينة قائمة تيليجرام", callback_data: "Kn-tg" }
-  ],
-  [
-    { text: "👑 العودة للوحة الأدمن", callback_data: "admin_panel" },
-    { text: "🏡 القائمة الرئيسية", callback_data: "/start" }
-  ]
-];
+var keyboard = [];
+
+// 1. Toggles and Quick Actions
+keyboard.push([
+  { text: "➕ إضافة دولة جديدة فوراً 🌐", callback_data: "add_country" }
+]);
+
+keyboard.push([
+  { text: "📈 زيادة كل الأسعار +1 ₽", callback_data: "adj_all +1" },
+  { text: "📉 إنقاص كل الأسعار -1 ₽", callback_data: "adj_all -1" }
+]);
+
+// 2. Interactive Country Buttons (WhatsApp)
+keyboard.push([ { text: "👇 اضغط على أي دولة أدناه لتعديل سعرها أو ربطها بسيرفر:", callback_data: "prices_menu" } ]);
+
+var all_wa_keys = Object.keys(prices.whatsapp || {});
+for (var i = 0; i < all_wa_keys.length; i += 2) {
+  var row = [];
+  var k1 = all_wa_keys[i];
+  var it1 = prices.whatsapp[k1];
+  row.push({
+    text: it1.name + " ¦ " + it1.price + " ₽",
+    callback_data: "c_edit wa " + k1
+  });
+
+  if (i + 1 < all_wa_keys.length) {
+    var k2 = all_wa_keys[i + 1];
+    var it2 = prices.whatsapp[k2];
+    row.push({
+      text: it2.name + " ¦ " + it2.price + " ₽",
+      callback_data: "c_edit wa " + k2
+    });
+  }
+  keyboard.push(row);
+}
+
+// 3. Navigation Buttons
+keyboard.push([
+  { text: "💬 معاينة قائمة واتساب", callback_data: "Kn-wa" },
+  { text: "📢 معاينة قائمة تيليجرام", callback_data: "Kn-tg" }
+]);
+
+keyboard.push([
+  { text: "👑 العودة للوحة الأدمن", callback_data: "admin_panel" },
+  { text: "🏡 القائمة الرئيسية", callback_data: "/start" }
+]);
 
 try {
   Api.sendMessage({

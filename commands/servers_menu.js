@@ -11,32 +11,33 @@ if (user_id !== admin_id) return;
 
 var text = "🌐 *إدارة السيرفرات ومواقع التوريد الحقيقية:*\n\n" +
   "تستطيع من هنا:\n" +
-  "1️⃣ إضافة موقع جديد عبر إرسال الرابط (URL) ومفتاح الـ API.\n" +
-  "2️⃣ تغيير السيرفر الافتراضي لشراء الأرقام.\n" +
+  "1️⃣ التحكم بسلفر الكحلاني المعتمد (عشوائي).\n" +
+  "2️⃣ ضبط سيرفر HeroSMS وسيرفر 5SIM الحقيقيين.\n" +
   "3️⃣ تعديل نسبة الربح المضافة لكل موقع.\n" +
   "4️⃣ فحص الرصيد الحقيقي المتبقي في حسابك بكل موقع.\n\n" +
   "المواقع المتصلة حالياً:\n" +
-  "• سيرفر مصطفى 5SIM (#4437001): `ONLINE`\n" +
-  "• سيرفر HeroSMS (#1513844): `ONLINE`\n" +
-  "• سيرفر موقع محمد: `ONLINE` (مفعل)\n" +
-  "• sms-man.ru: `ONLINE` (مفعل)";
+  "• سلفر الكحلاني (عشوائي): `ONLINE` 🟢 (نشط)\n" +
+  "• سيرفر HeroSMS (#1513844): `ONLINE` 🟢 (نشط)\n" +
+  "• سيرفر مصطفى 5SIM (#4437001): `ONLINE` 🟢 (نشط)\n" +
+  "• سيرفر SMS-Activate الاحتياطي: `ONLINE` 🟢";
 
 var keyboard = [
+  [
+    { text: "🎲 إعدادات سلفر الكحلاني (عشوائي)", callback_data: "kahlani_server" }
+  ],
   [
     { text: "🦸‍♂️ إعدادات سيرفر HeroSMS (#1513844)", callback_data: "hero_sms" }
   ],
   [
-    { text: "➕ إضافة موقع جديد بالرابط و API", callback_data: "add_custom_site" }
-  ],
-  [
-    { text: "👑 ضبط سيرفر موقع محمد", callback_data: "mohammed_server" },
+    { text: "➕ إضافة موقع جديد بالرابط و API", callback_data: "add_custom_site" },
     { text: "💸 كشف أرصدة المواقع الحقيقية", callback_data: "check_all_balances" }
   ],
   [
     { text: "⚙️ تعديل نسبة ربح المواقع", callback_data: "edit_profit_margins" }
   ],
   [
-    { text: "🔙 رجوع للوحة الأدمن", callback_data: "admin_panel" }
+    { text: "👑 لوحة الأدمن", callback_data: "admin_panel" },
+    { text: "🔙 رجوع", callback_data: "admin_panel" }
   ]
 ];
 

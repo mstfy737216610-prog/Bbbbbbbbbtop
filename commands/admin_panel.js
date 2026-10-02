@@ -25,7 +25,7 @@ var text = "👑 *لوحة تحكم الأدمن والمالك الشاملة*\
   "أهلاً بك مطوري *" + first_name + "* 🖤\n\n" +
   "من هنا يمكنك التحكم الكامل بالبوت:\n" +
   "• إضافة وتغيير مواقع التوريد عبر الرابط و API\n" +
-  "• تفعيل وتخصيص سيرفر موقع محمد\n" +
+  "• تفعيل وتخصيص سلفر الكحلاني (عشوائي)\n" +
   "• تعديل قنوات الاشتراك الإجباري أو حذف القنوات السابقة\n" +
   "• التحكم بطرق الشحن وشحن/خصم رصيد العملاء\n" +
   "• توليد كروت الشحن وقفل/فتح السيرفرات\n\n" +
@@ -37,8 +37,12 @@ var keyboard = [
     { text: "➕ إضافة دولة وسعر جديد 🌐", callback_data: "add_country" }
   ],
   [
-    { text: "🌐 السيرفرات ومواقع الـ API", callback_data: "servers_menu" },
-    { text: "💸 كشف رصيد الموقع الحقيقي", callback_data: "check_all_balances" }
+    { text: "🎲 سلفر الكحلاني (عشوائي)", callback_data: "kahlani_server" },
+    { text: "🌐 السيرفرات ومواقع الـ API", callback_data: "servers_menu" }
+  ],
+  [
+    { text: "💸 كشف رصيد الموقع الحقيقي", callback_data: "check_all_balances" },
+    { text: "📊 إحصائيات البوت والروبل", callback_data: "baluser" }
   ],
   [
     { text: "📢 قنوات الاشتراك الإجباري والوصف", callback_data: "channels_menu" },
@@ -54,9 +58,6 @@ var keyboard = [
   ],
   [
     { text: "🔏 قفل وفتح الأقسام", callback_data: "opclo" },
-    { text: "📊 إحصائيات البوت والروبل", callback_data: "baluser" }
-  ],
-  [
     { text: "🏡 العودة للقائمة الرئيسية", callback_data: "/start" }
   ]
 ];

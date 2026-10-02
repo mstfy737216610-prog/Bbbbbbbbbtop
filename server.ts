@@ -1782,17 +1782,13 @@ class TelegramBotRunner {
     // 2. Admin Panel
     if (data === 'admin_panel' && isAdmin) {
       delete adminInputStates[userId];
-      const profile = await fetchMustafa5SimProfile();
-      const simBalance = profile?.balance !== undefined ? profile.balance : '3.49';
 
-      const text = `👑 *لوحة تحكم الأدمن والمالك الشاملة (مصطفى)*\n\n` +
-        `أهلاً بك يا مصطفى المهندس المسؤول 🖤\n\n` +
-        `👤 *المزود الحصري الوحيد:* \`سيرفر مصطفى 5SIM.NET\`\n` +
-        `🆔 *معرف حسابك في الموقع:* \`#4437001\`\n` +
-        `📧 *البريد:* \`mstfy737216610@gmail.com\`\n` +
-        `💵 *رصيدك الحقيقي في 5sim.net:* \`$${simBalance} USD\` (نشط 100% ✅)\n` +
-        `⭐ *تقييم الحساب:* \`96\` | *البوت يشتري تلقائياً بأرخص سعر بالموقع*\n` +
-        `💷 *عملة البيع للعملاء:* \`بالروبل ₽ (حسب تسعيرتك الخاصة)\``;
+      const text = `👑 *لوحة أدوات وإدارة البوت الشاملة* ⚙️\n\n` +
+        `• *حالة السيرفرات:* متصلة ونشطة 🟢\n` +
+        `• *السيرفر المعتمد:* \`سلفر الكحلاني (عشوائي)\`\n` +
+        `• *سيرفرات التوريد المدمجة:* HeroSMS + 5SIM.NET\n` +
+        `• *عملة البيع للعملاء:* بالروبل ₽ (مخصصة بالكامل)\n\n` +
+        `👇 *اختر الإجراء المطلوب من الأزرار بالأسفل:*`;
 
       const keyboard = [
         [
@@ -2240,14 +2236,14 @@ class TelegramBotRunner {
       return;
     }
 
-    // 3.9 One-Tap Rename to "سيرفر الكحلاني (عشوائي)"
+    // 3.9 One-Tap Rename to "سلفر الكحلاني (عشوائي)"
     if (data.startsWith('srv_rename_to_kahlani_') && isAdmin) {
       const sId = data.replace('srv_rename_to_kahlani_', '');
       const srv = customServers.find(s => s.id === sId);
       if (srv) {
-        srv.name = 'سيرفر الكحلاني (عشوائي)';
+        srv.name = 'سلفر الكحلاني (عشوائي)';
         saveJson('servers.json', customServers);
-        await this.answerCallback(queryId, `✅ تم تغيير اسم السيرفر إلى: سيرفر الكحلاني (عشوائي)!`, true);
+        await this.answerCallback(queryId, `✅ تم تغيير اسم السيرفر إلى: سلفر الكحلاني (عشوائي)!`, true);
       }
       await this.handleCallback({ ...cb, data: 'servers_manage_menu' });
       return;

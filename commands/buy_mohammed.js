@@ -10,7 +10,7 @@ if (typeof params !== "undefined" && params) {
 }
 
 if (svc === "telegram") {
-  Bot.runCommand("Xi tg colombia 10");
+  Bot.runCommand("Xi tg colombia 10 srv-kahlani");
 } else {
-  Bot.runCommand("Xi wa colombia 15");
+  Bot.runCommand("Xi wa colombia 15 srv-kahlani");
 }
